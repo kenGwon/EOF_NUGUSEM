@@ -12,6 +12,28 @@
 #define new DEBUG_NEW
 #endif
 
+#ifdef _DEBUG
+#pragma comment(linker, "/ENTRY:WinMainCRTStartup /subsystem:console") // 빌드하여 실행했을 때, 콘솔도 함께 뜨도록 만들기 위한 명령
+#endif
+
+/* <global scope function... non- CNUGUSEMserverGUIDlg class context>
+  desc: 클라이언트의 송신을 수신하기 위한, listen 역할을 담당하는 작업스레드. 
+*/
+UINT ThreadForListening(LPVOID param)
+{
+	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
+
+	while (pMain->get_m_flagListenClientThread())
+	{
+		Sleep(300); 
+		printf("수신중! ");
+		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
+	}
+
+	return 0;
+}
+
+
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -52,6 +74,7 @@ END_MESSAGE_MAP()
 
 CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_NUGUSEM_SERVERGUI_DIALOG, pParent)
+	, m_strLog(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -59,12 +82,17 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Text(pDX, IDC_LOG, m_strLog);
+	DDX_Control(pDX, IDC_LOG, m_controlLog);
 }
 
 BEGIN_MESSAGE_MAP(CNUGUSEMserverGUIDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDC_OPEN, &CNUGUSEMserverGUIDlg::OnBnClickedOpen)
+	ON_BN_CLICKED(IDC_CLOSE, &CNUGUSEMserverGUIDlg::OnBnClickedClose)
+	ON_MESSAGE(MESSAGE_LISTEN_CLIENT, &CNUGUSEMserverGUIDlg::get_TCPIP_data) // kenGwon: 사용자정의 메세지 "MESSAGE_LISTEN_CLIENT"
 END_MESSAGE_MAP()
 
 
@@ -100,6 +128,13 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
+
+
+	m_flagListenClientThread = TRUE; // 스레드 
+	m_pThread = AfxBeginThread(ThreadForListening, this);
+
+
+
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
@@ -153,3 +188,43 @@ HCURSOR CNUGUSEMserverGUIDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
+{
+	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+
+	
+}
+
+
+void CNUGUSEMserverGUIDlg::OnBnClickedClose()
+{
+	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+
+
+
+}
+
+LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
+{
+	// 여기서 통신 클래스 객체를 통한 listen 동작이 들어가야함.
+
+
+	CString str = _T("2023-11-18 권강현 출입\r\n");  // 문자열을 저장할 변수
+
+	// 문자열의 길이를 알아냄
+	int nLength = m_controlLog.GetWindowTextLength();
+
+	// 마지막 줄을 선택함
+	m_controlLog.SetSel(nLength, nLength);
+
+	// 선택된 행의 텍스트를 교체
+	m_controlLog.ReplaceSel(str);
+
+	return 0;
+}
+
+BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
+{
+	return this->m_flagListenClientThread;
+}

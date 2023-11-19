@@ -5,6 +5,8 @@
 #pragma once
 
 
+#define MESSAGE_LISTEN_CLIENT WM_USER + 1 // 사용자 정의 메세지
+
 // CNUGUSEMserverGUIDlg 대화 상자
 class CNUGUSEMserverGUIDlg : public CDialogEx
 {
@@ -31,4 +33,20 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+
+private:
+	BOOL m_flagListenClientThread;
+
+	CRect m_cam_face_rect;
+	CImage m_cam_face_image;
+
+	CEdit m_controlLog;
+	CString m_strLog;
+	CWinThread* m_pThread;
+
+public:
+	afx_msg void OnBnClickedOpen(); 
+	afx_msg void OnBnClickedClose();
+	LRESULT get_TCPIP_data(WPARAM wParam, LPARAM lParam);
+	BOOL get_m_flagListenClientThread();
 };
