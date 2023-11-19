@@ -26,8 +26,6 @@ UINT ThreadForListening(LPVOID param)
 	while (pMain->get_m_flagListenClientThread())
 	{
 		Sleep(3000); 
-		
-
 		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 
@@ -78,7 +76,6 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 	, m_strLog(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-	
 }
 
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -130,7 +127,6 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 작은 아이콘을 설정합니다.
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
-
 
 	m_flagListenClientThread = TRUE; // 스레드 
 	m_pThread = AfxBeginThread(ThreadForListening, this);
@@ -218,13 +214,15 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	{
 		//picture control 띄우기
 		std::cout << "pic" << std::endl;
+
+		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+		ScreenToClient(m_cam_face_rect);
+		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+
 		server.set_image_flag(false);
 	}
 	else
 	{
-		//CString str = _T("2023-11-18 권강현 출입\r\n");  // 문자열을 저장할 변수
-				
-		// server.getstring();
 		str += "\r\n";
 
 		// 문자열의 길이를 알아냄
@@ -236,11 +234,21 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 		// 선택된 행의 텍스트를 교체
 		m_controlLog.ReplaceSel(str);
 	}
-
 	return 0;
 }
 
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
 	return this->m_flagListenClientThread;
+}
+
+/*
+  desc: img_path를 바탕으로 이미지를 로드하여 Picture Control에 출력한다.
+  param: 이미지 경로
+*/
+void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, CRect& image_rect)
+{
+	image_instance.~CImage();
+	image_instance.Load(img_path);
+	InvalidateRect(image_rect, TRUE);
 }
