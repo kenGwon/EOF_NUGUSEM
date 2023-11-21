@@ -1,26 +1,23 @@
+
+// server.cpp
+
 #include "pch.h"
 #include "Server.h"
 
 Server::Server() {
-    image_flag = false;//image 수신 flag
+    Rflag = -1;//no input
 
     WSAStartup(MAKEWORD(2, 2), &wsaData);
 
-    // TCP socket 생성
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-    // 소켓 주소 설정
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(PORT);
 
-    // 소켓 바인딩
     bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
-
-    // 소켓 수신 대기
     listen(serverSocket, 5);
     std::cout << "Server listening on port " << PORT << "..." << std::endl;
-    
 }
 
 Server::~Server() {
@@ -28,14 +25,11 @@ Server::~Server() {
     WSACleanup();
 }
 
-void Server::run(CString &receieved_string) {
-    
-    // 클라이언트 연결 수락
+void Server::run(CString& received_string) {
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
     SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
 
-    // Receive data type header
     DataType dataType;
     int headerBytesRead = recv(clientSocket, reinterpret_cast<char*>(&dataType), sizeof(DataType), 0);
 
@@ -44,39 +38,36 @@ void Server::run(CString &receieved_string) {
         closesocket(clientSocket);
     }
 
-    // Process data based on type
     switch (dataType) {
     case IMAGE:
         receiveImage(clientSocket);
-        //image_flag 1
+        set_Rflag(-1);
         break;
     case STRING:
-        receieved_string = receiveString(clientSocket);
+        received_string = receiveString(clientSocket);
+        set_Rflag(-1);
+        break;
+    case RFID_UID:
+        received_string = receiveRFID_UID(clientSocket);
+        set_Rflag(-1);
         break;
     default:
         std::cerr << "Unknown data type received" << std::endl;
     }
 
-    // 소켓 종료
     closesocket(clientSocket);
-    
 }
 
-void Server::set_image_flag(bool image_flag)
-{
-    this->image_flag = image_flag;
+void Server::set_Rflag(int Rflag) {
+    this->Rflag = Rflag;
 }
 
-bool Server::get_image_flag()
-{
-    return this->image_flag;
+int Server::get_Rflag() {
+    return this->Rflag;
 }
 
 void Server::receiveImage(SOCKET clientSocket) {
-    // 이미지 파일 생성
     std::ofstream receivedFile("received_image.png", std::ios::binary);
-
-    // 이미지 데이터 수신 및 저장
     char buffer[BUFFER_SIZE];
     int bytesRead;
 
@@ -86,22 +77,40 @@ void Server::receiveImage(SOCKET clientSocket) {
     }
 
     receivedFile.close();
-    set_image_flag(true);
+    set_Rflag(0);//image flag
     std::cout << "Image received and saved as received_image.png" << std::endl;
 }
 
 CString Server::receiveString(SOCKET clientSocket) {
-    // 문자열 수신
     char stringBuffer[BUFFER_SIZE];
     int stringBytesRead = recv(clientSocket, stringBuffer, BUFFER_SIZE, 0);
 
     if (stringBytesRead > 0) {
-        stringBuffer[stringBytesRead] = '\0'; // Null-terminate the string
+        stringBuffer[stringBytesRead] = '\0';
         std::cout << "Received string from client: " << stringBuffer << std::endl;
     }
     else {
         std::cerr << "Error receiving string data" << std::endl;
-    } 
-    CStringW receievedString(stringBuffer);
-    return receievedString;
+    }
+
+    CStringW receivedString(stringBuffer);
+    set_Rflag(1);//1:string for log
+    return receivedString;
+}
+
+CString Server::receiveRFID_UID(SOCKET clientSocket) {
+    char uidBuffer[BUFFER_SIZE];
+    int uidBytesRead = recv(clientSocket, uidBuffer, BUFFER_SIZE, 0);
+
+    if (uidBytesRead > 0) {
+        uidBuffer[uidBytesRead] = '\0';
+        std::cout << "Received RFID UID from client: " << uidBuffer << std::endl;
+    }
+    else {
+        std::cerr << "Error receiving RFID UID data" << std::endl;
+    }
+
+    CStringW receivedUID(uidBuffer);
+    set_Rflag(2);//2:RFID_UID
+    return receivedUID;
 }

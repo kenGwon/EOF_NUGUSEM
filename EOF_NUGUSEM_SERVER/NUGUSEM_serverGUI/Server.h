@@ -1,3 +1,5 @@
+// server.h
+
 #pragma once
 
 #include <iostream>
@@ -13,6 +15,7 @@ constexpr int BUFFER_SIZE = 1024;
 enum DataType {
     IMAGE = 0,
     STRING = 1,
+    RFID_UID = 2,
 };
 
 class Server {
@@ -20,16 +23,16 @@ public:
     Server();
     ~Server();
 
-    void run(CString& receieved_string);
-    void set_image_flag(bool image_flag);
-    bool get_image_flag();
-
+    void run(CString& received_string);
+    void set_Rflag(int Rflag/*receieve flag*/);
+    int get_Rflag();
 
 private:
     WSADATA wsaData;
     SOCKET serverSocket;
     sockaddr_in serverAddr;
-    bool image_flag;
+    int Rflag; /*receieve flag 0: image 1:string for log 2:RFID_UID*/ 
     void receiveImage(SOCKET clientSocket);
     CString receiveString(SOCKET clientSocket);
+    CString receiveRFID_UID(SOCKET clientSocket);
 };
