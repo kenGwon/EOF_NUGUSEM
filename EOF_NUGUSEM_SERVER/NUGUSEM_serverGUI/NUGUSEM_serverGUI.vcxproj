@@ -93,7 +93,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>MariaDB 11.1\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>thirdparty\MariaDB 11.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -167,7 +167,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>MariaDB 11.1\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>thirdparty\MariaDB 11.1\include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -188,6 +188,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="mariaDB.h" />
     <ClInclude Include="NUGUSEM_serverGUI.h" />
     <ClInclude Include="NUGUSEM_serverGUIDlg.h" />
     <ClInclude Include="pch.h" />
@@ -196,6 +197,7 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="mariaDB.cpp" />
     <ClCompile Include="NUGUSEM_serverGUI.cpp" />
     <ClCompile Include="NUGUSEM_serverGUIDlg.cpp" />
     <ClCompile Include="pch.cpp">

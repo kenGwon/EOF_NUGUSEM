@@ -74,9 +74,6 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 	, m_strLog(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-
-	// 프로그램 시작하자마자 DB연결
-	AttachDB();
 }
 
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -133,6 +130,14 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	m_pThread = AfxBeginThread(ThreadForListening, this);
 
 
+
+	// DB 연결 테스트용
+	CString img_path;
+	DB.get_img_path(_T("c37adb04"), img_path);
+	GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+	ScreenToClient(m_cam_face_rect);
+	PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
+	std::cout << "Image received" << std::endl;
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -244,6 +249,11 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	}
 	else if (server.get_Rflag() == 2) {
 		// DB 조회용 UID
+
+		str += "\r\n";
+		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
+		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
+		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
 		
 		// str값을 바탕으로 DB 쿼리 작성
 
@@ -267,41 +277,4 @@ void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, 
 	image_instance.~CImage();
 	image_instance.Load(img_path);
 	InvalidateRect(image_rect, TRUE);
-}
-
-/*
-  desc: DB를 연결한다.
-  param: 연결할 DB의 name
-*/
-void CNUGUSEMserverGUIDlg::AttachDB()
-{
-	mysql_init(&Connect); // Connect는 pre-compiled header에 전역변수로 정의되어 있음.
-
-	if (mysql_real_connect(&Connect, CONNECT_IP, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, NULL, 0))
-	{
-#ifdef _DEBUG 
-		printf("DB 연결성공!!!\n");
-#endif
-	}
-	else
-	{
-		AfxMessageBox(_T("DB연결에 실패했습니다.\nDB서버 개방여부 확인하십시오."));
-#ifdef _DEBUG 
-		printf("DB 연결실패...\n");
-#endif
-	}
-
-	mysql_query(&Connect, "SET Names euckr"); // DB 문자 인코딩을 euckr로 셋팅
-}
-
-/*
-  desc: DB를 연결을 해제한다.
-  param: 연결할 DB의 name
-*/
-void CNUGUSEMserverGUIDlg::DetachDB()
-{
-	mysql_close(&Connect);
-#ifdef _DEBUG 
-	printf("DB 연결해제...\n");
-#endif
 }

@@ -1,3 +1,7 @@
+# 서드파티 라이브러리는 깃 업로드 제외 @권강현
+EOF_NUGUSEM_SERVER/NUGUSEM_serverGUI/thirdparty/*
+
+
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudio
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudio
 

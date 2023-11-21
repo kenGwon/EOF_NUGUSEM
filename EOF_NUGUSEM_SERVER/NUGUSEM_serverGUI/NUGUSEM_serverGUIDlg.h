@@ -4,19 +4,7 @@
 #pragma once
 
 #include "Server.h"
-#include <string>
-
-// DB 연결
-#pragma comment(lib, "libmariadb.lib")
-#include "mysql/mysql.h"
-
-
-#define CONNECT_IP "10.10.15.58"
-#define DB_USER "EOF"
-#define DB_PASSWORD "eofgo12#"
-#define DB_PORT 3306
-#define DB_NAME "nugusem"
-
+#include "mariaDB.h"
 
 #define MESSAGE_LISTEN_CLIENT WM_USER + 1 // 사용자 정의 메세지
 
@@ -65,11 +53,5 @@ public:
 	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
 	
 	Server server;
-
-	MYSQL Connect;
-	MYSQL_RES* sql_query_result;
-	MYSQL_ROW sql_row;
-
-	void AttachDB();
-	void DetachDB();
+	mariaDB DB;
 };
