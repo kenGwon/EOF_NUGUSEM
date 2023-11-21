@@ -75,6 +75,8 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 
+	// 프로그램 시작하자마자 DB연결
+	AttachDB();
 }
 
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -155,6 +157,8 @@ void CNUGUSEMserverGUIDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CNUGUSEMserverGUIDlg::OnPaint()
 {
+	CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
@@ -175,6 +179,17 @@ void CNUGUSEMserverGUIDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+
+		dc.SetStretchBltMode(COLORONCOLOR); // 이미지를 축소나 확대를 경우 생기는 손실을 보정
+
+		if (!m_cam_face_image.IsNull())
+		{
+			m_cam_face_image.Draw(dc, m_cam_face_rect); // 그림을 Picture Control 크기로 화면에 출력한다.	
+		}
+		if (!m_cam_face_image.IsNull())
+		{
+			m_cam_face_image.Draw(dc, m_cam_face_rect); // 그림을 Picture Control 크기로 화면에 출력한다.
+		}
 	}
 }
 
@@ -210,13 +225,13 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	if (server.get_Rflag()==0) {
 		// 이미지 출력용 png
 
-		std::cout << "Image received" << std::endl;
-		server.set_Rflag(-1);
-
  		//picture control 띄우기
  		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
  		ScreenToClient(m_cam_face_rect);
  		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+		std::cout << "Image received" << std::endl;
+
+		server.set_Rflag(-1);
 	}
 	else if(server.get_Rflag() == 1){
 		// 로그 출력용 String
@@ -224,11 +239,15 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
 		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
 		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
+
+		//server.set_Rflag(-1);
 	}
 	else if (server.get_Rflag() == 2) {
 		// DB 조회용 UID
 		
 		// str값을 바탕으로 DB 쿼리 작성
+
+		//server.set_Rflag(-1);
 	}
 	return 0;
 }
@@ -248,4 +267,41 @@ void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, 
 	image_instance.~CImage();
 	image_instance.Load(img_path);
 	InvalidateRect(image_rect, TRUE);
+}
+
+/*
+  desc: DB를 연결한다.
+  param: 연결할 DB의 name
+*/
+void CNUGUSEMserverGUIDlg::AttachDB()
+{
+	mysql_init(&Connect); // Connect는 pre-compiled header에 전역변수로 정의되어 있음.
+
+	if (mysql_real_connect(&Connect, CONNECT_IP, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT, NULL, 0))
+	{
+#ifdef _DEBUG 
+		printf("DB 연결성공!!!\n");
+#endif
+	}
+	else
+	{
+		AfxMessageBox(_T("DB연결에 실패했습니다.\nDB서버 개방여부 확인하십시오."));
+#ifdef _DEBUG 
+		printf("DB 연결실패...\n");
+#endif
+	}
+
+	mysql_query(&Connect, "SET Names euckr"); // DB 문자 인코딩을 euckr로 셋팅
+}
+
+/*
+  desc: DB를 연결을 해제한다.
+  param: 연결할 DB의 name
+*/
+void CNUGUSEMserverGUIDlg::DetachDB()
+{
+	mysql_close(&Connect);
+#ifdef _DEBUG 
+	printf("DB 연결해제...\n");
+#endif
 }

@@ -4,7 +4,7 @@ import face_recognizing
 import threading
 
 # 프로그램 시작하고 모델 훈련이 필요한 경우
-# face_collecting.collect_data("kenGwon")
+face_collecting.collect_data("Dohyeon")
 # face_traning.train_model()
 
 
