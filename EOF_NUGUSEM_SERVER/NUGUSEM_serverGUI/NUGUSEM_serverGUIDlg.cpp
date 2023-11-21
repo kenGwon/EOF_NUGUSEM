@@ -1,5 +1,4 @@
-﻿
-// NUGUSEM_serverGUIDlg.cpp: 구현 파일
+﻿// NUGUSEM_serverGUIDlg.cpp: 구현 파일
 //
 
 #include "pch.h"
@@ -17,7 +16,7 @@
 #endif
 
 /* <global scope function... non- CNUGUSEMserverGUIDlg class context>
-  desc: 클라이언트의 송신을 수신하기 위한, listen 역할을 담당하는 작업스레드. 
+  desc: 클라이언트의 송신을 수신하기 위한, listen 역할을 담당하는 작업스레드.
 */
 UINT ThreadForListening(LPVOID param)
 {
@@ -25,8 +24,8 @@ UINT ThreadForListening(LPVOID param)
 
 	while (pMain->get_m_flagListenClientThread())
 	{
-		Sleep(3000); 
-		
+		Sleep(3000);
+
 
 		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
@@ -34,6 +33,10 @@ UINT ThreadForListening(LPVOID param)
 	return 0;
 }
 
+BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
+{
+	return this->m_flagListenClientThread;
+}
 
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
@@ -43,15 +46,15 @@ class CAboutDlg : public CDialogEx
 public:
 	CAboutDlg();
 
-// 대화 상자 데이터입니다.
+	// 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 지원입니다.
 
-// 구현입니다.
+	// 구현입니다.
 protected:
 	DECLARE_MESSAGE_MAP()
 };
@@ -78,7 +81,7 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 	, m_strLog(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-	
+
 }
 
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -195,7 +198,7 @@ void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
 {
 	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
 
-	
+
 }
 
 
@@ -209,38 +212,26 @@ void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 
 LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 {
-	// 여기서 통신 클래스 객체를 통한 listen 동작이 들어가야함.
-	
-	CString str;  // 문자열을 저장할 변수
+	CString str;
 	server.run(str);
 
-	if (server.get_image_flag())
-	{
-		//picture control 띄우기
-		std::cout << "pic" << std::endl;
-		server.set_image_flag(false);
+	if (server.get_Rflag()==0) {
+		std::cout << "Image received" << std::endl;
+		server.set_Rflag(-1);
 	}
-	else
-	{
-		//CString str = _T("2023-11-18 권강현 출입\r\n");  // 문자열을 저장할 변수
-				
-		// server.getstring();
+	else if(server.get_Rflag() == 1){
 		str += "\r\n";
-
-		// 문자열의 길이를 알아냄
 		int nLength = m_controlLog.GetWindowTextLength();
-
-		// 마지막 줄을 선택함
 		m_controlLog.SetSel(nLength, nLength);
-
-		// 선택된 행의 텍스트를 교체
+		m_controlLog.ReplaceSel(str);
+	}
+	else if (server.get_Rflag() == 2) {
+		str += "\r\n";
+		int nLength = m_controlLog.GetWindowTextLength();
+		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(str);
 	}
 
 	return 0;
 }
 
-BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
-{
-	return this->m_flagListenClientThread;
-}
