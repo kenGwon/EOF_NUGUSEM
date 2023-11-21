@@ -49,5 +49,7 @@ public:
 	afx_msg void OnBnClickedClose();
 	LRESULT get_TCPIP_data(WPARAM wParam, LPARAM lParam);
 	BOOL get_m_flagListenClientThread();
+	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
+	
 	Server server;
 };

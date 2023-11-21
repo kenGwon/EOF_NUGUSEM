@@ -26,7 +26,6 @@ UINT ThreadForListening(LPVOID param)
 	{
 		Sleep(3000);
 
-
 		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 
@@ -134,7 +133,6 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
-
 	m_flagListenClientThread = TRUE; // 스레드 
 	m_pThread = AfxBeginThread(ThreadForListening, this);
 
@@ -215,6 +213,7 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	CString str;
 	server.run(str);
 
+// <<<<<<< main
 	if (server.get_Rflag()==0) {
 		std::cout << "Image received" << std::endl;
 		server.set_Rflag(-1);
@@ -226,12 +225,41 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 		m_controlLog.ReplaceSel(str);
 	}
 	else if (server.get_Rflag() == 2) {
+// =======
+// 	if (server.get_image_flag())
+// 	{
+// 		//picture control 띄우기
+// 		std::cout << "pic" << std::endl;
+
+// 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+// 		ScreenToClient(m_cam_face_rect);
+// 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+
+// 		server.set_image_flag(false);
+// 	}
+// 	else
+// 	{
+// >>>>>>> main
 		str += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(str);
 	}
-
 	return 0;
 }
 
+BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
+{
+	return this->m_flagListenClientThread;
+}
+
+/*
+  desc: img_path를 바탕으로 이미지를 로드하여 Picture Control에 출력한다.
+  param: 이미지 경로
+*/
+void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, CRect& image_rect)
+{
+	image_instance.~CImage();
+	image_instance.Load(img_path);
+	InvalidateRect(image_rect, TRUE);
+}
