@@ -32,12 +32,6 @@ UINT ThreadForListening(LPVOID param)
 	return 0;
 }
 
-BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
-{
-	return this->m_flagListenClientThread;
-}
-
-
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
@@ -194,7 +188,7 @@ HCURSOR CNUGUSEMserverGUIDlg::OnQueryDragIcon()
 
 void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
 {
-	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
 
 
 }
@@ -202,7 +196,7 @@ void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
 
 void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 {
-	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
 
 
 
@@ -213,40 +207,32 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	CString str;
 	server.run(str);
 
-// <<<<<<< main
 	if (server.get_Rflag()==0) {
+		// 이미지 출력용 png
+
 		std::cout << "Image received" << std::endl;
 		server.set_Rflag(-1);
+
+ 		//picture control 띄우기
+ 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+ 		ScreenToClient(m_cam_face_rect);
+ 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 	}
 	else if(server.get_Rflag() == 1){
+		// 로그 출력용 String
 		str += "\r\n";
-		int nLength = m_controlLog.GetWindowTextLength();
-		m_controlLog.SetSel(nLength, nLength);
-		m_controlLog.ReplaceSel(str);
+		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
+		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
+		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
 	}
 	else if (server.get_Rflag() == 2) {
-// =======
-// 	if (server.get_image_flag())
-// 	{
-// 		//picture control 띄우기
-// 		std::cout << "pic" << std::endl;
-
-// 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
-// 		ScreenToClient(m_cam_face_rect);
-// 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
-
-// 		server.set_image_flag(false);
-// 	}
-// 	else
-// 	{
-// >>>>>>> main
-		str += "\r\n";
-		int nLength = m_controlLog.GetWindowTextLength();
-		m_controlLog.SetSel(nLength, nLength);
-		m_controlLog.ReplaceSel(str);
+		// DB 조회용 UID
+		
+		// str값을 바탕으로 DB 쿼리 작성
 	}
 	return 0;
 }
+
 
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
