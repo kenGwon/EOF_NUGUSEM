@@ -4,6 +4,7 @@
 #pragma once
 
 #include "Server.h"
+#include "mariaDB.h"
 
 #define MESSAGE_LISTEN_CLIENT WM_USER + 1 // 사용자 정의 메세지
 
@@ -49,6 +50,9 @@ public:
 	afx_msg void OnBnClickedClose();
 	LRESULT get_TCPIP_data(WPARAM wParam, LPARAM lParam);
 	BOOL get_m_flagListenClientThread();
+	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
+	
 	Server server;
 	CString get_m_strLog();
+	mariaDB DB;
 };

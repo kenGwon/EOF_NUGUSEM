@@ -37,21 +37,17 @@ UINT ThreadForListening(LPVOID param)
 		}
 
 		Sleep(3000);
+
+
 		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 
 	return 0;
 }
 
-
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
 	return this->m_flagListenClientThread;
-}
-
-CString CNUGUSEMserverGUIDlg::get_m_strLog()
-{
-	return this->m_strLog;
 }
 
 
@@ -97,7 +93,6 @@ CNUGUSEMserverGUIDlg::CNUGUSEMserverGUIDlg(CWnd* pParent /*=nullptr*/)
 	, m_strLog(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-
 }
 
 void CNUGUSEMserverGUIDlg::DoDataExchange(CDataExchange* pDX)
@@ -150,11 +145,18 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
-
 	m_flagListenClientThread = TRUE; // 스레드 
 	m_pThread = AfxBeginThread(ThreadForListening, this);
 
 
+
+	// DB 연결 테스트용
+	CString img_path;
+	DB.get_img_path(_T("c37adb04"), img_path);
+	GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+	ScreenToClient(m_cam_face_rect);
+	PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
+	std::cout << "Image received" << std::endl;
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -179,6 +181,8 @@ void CNUGUSEMserverGUIDlg::OnSysCommand(UINT nID, LPARAM lParam)
 
 void CNUGUSEMserverGUIDlg::OnPaint()
 {
+	CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
+
 	if (IsIconic())
 	{
 		CPaintDC dc(this); // 그리기를 위한 디바이스 컨텍스트입니다.
@@ -199,6 +203,17 @@ void CNUGUSEMserverGUIDlg::OnPaint()
 	else
 	{
 		CDialogEx::OnPaint();
+
+		dc.SetStretchBltMode(COLORONCOLOR); // 이미지를 축소나 확대를 경우 생기는 손실을 보정
+
+		if (!m_cam_face_image.IsNull())
+		{
+			m_cam_face_image.Draw(dc, m_cam_face_rect); // 그림을 Picture Control 크기로 화면에 출력한다.	
+		}
+		if (!m_cam_face_image.IsNull())
+		{
+			m_cam_face_image.Draw(dc, m_cam_face_rect); // 그림을 Picture Control 크기로 화면에 출력한다.
+		}
 	}
 }
 
@@ -212,7 +227,7 @@ HCURSOR CNUGUSEMserverGUIDlg::OnQueryDragIcon()
 
 void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
 {
-	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
 
 
 }
@@ -220,7 +235,7 @@ void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
 
 void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 {
-	// 여기서 통신 클래스 객채를 통한 send 동작이 들어가야함.
+	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
 
 
 
@@ -232,23 +247,47 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	server.run(str);
 
 	if (server.get_Rflag()==0) {
+		// 이미지 출력용 png
+
+ 		//picture control 띄우기
+ 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+ 		ScreenToClient(m_cam_face_rect);
+ 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
+
 		server.set_Rflag(-1);
 	}
 	else if(server.get_Rflag() == 1){
+		// 로그 출력용 String
 		str += "\r\n";
-		int nLength = m_controlLog.GetWindowTextLength();
-		m_controlLog.SetSel(nLength, nLength);
-		m_controlLog.ReplaceSel(str);
+		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
+		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
+		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
+
+		//server.set_Rflag(-1);
 	}
 	else if (server.get_Rflag() == 2) {
+		// DB 조회용 UID
+
 		str += "\r\n";
-		std::cout << "uid_str:" << (CStringA)str;
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(str);
 	}
 
-	return 0;
+
+BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
+{
+	return this->m_flagListenClientThread;
 }
 
+/*
+  desc: img_path를 바탕으로 이미지를 로드하여 Picture Control에 출력한다.
+  param: 이미지 경로
+*/
+void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, CRect& image_rect)
+{
+	image_instance.~CImage();
+	image_instance.Load(img_path);
+	InvalidateRect(image_rect, TRUE);
+}

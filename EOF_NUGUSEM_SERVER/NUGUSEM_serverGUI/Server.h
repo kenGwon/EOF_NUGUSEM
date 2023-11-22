@@ -26,13 +26,14 @@ public:
     void run(CString& received_string);
     void set_Rflag(int Rflag/*receieve flag*/);
     int get_Rflag();
+    void receiveImage(SOCKET clientSocket);
+    CString receiveString(SOCKET clientSocket);
+    CString receiveRFID_UID(SOCKET clientSocket);
     SOCKET get_serverSocket(); // 새로 추가한 함수
+
 private:
     WSADATA wsaData;
     SOCKET serverSocket;
     sockaddr_in serverAddr;
     int Rflag; /*receieve flag 0: image 1:string for log 2:RFID_UID*/ 
-    void receiveImage(SOCKET clientSocket);
-    CString receiveString(SOCKET clientSocket);
-    CString receiveRFID_UID(SOCKET clientSocket);
 };
