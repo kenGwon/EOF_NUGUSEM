@@ -41,15 +41,15 @@ void Server::run(CString& received_string) {
     switch (dataType) {
     case IMAGE:
         receiveImage(clientSocket);
-        set_Rflag(-1);
+        set_Rflag(0);
         break;
     case STRING:
         received_string = receiveString(clientSocket);
-        set_Rflag(-1);
+        set_Rflag(1);
         break;
     case RFID_UID:
         received_string = receiveRFID_UID(clientSocket);
-        set_Rflag(-1);
+        set_Rflag(2);
         break;
     default:
         std::cerr << "Unknown data type received" << std::endl;
@@ -64,6 +64,9 @@ void Server::set_Rflag(int Rflag) {
 
 int Server::get_Rflag() {
     return this->Rflag;
+}
+SOCKET Server::get_serverSocket() {
+    return this->serverSocket;
 }
 
 void Server::receiveImage(SOCKET clientSocket) {

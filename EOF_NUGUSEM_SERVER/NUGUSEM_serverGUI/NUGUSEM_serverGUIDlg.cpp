@@ -24,18 +24,34 @@ UINT ThreadForListening(LPVOID param)
 
 	while (pMain->get_m_flagListenClientThread())
 	{
+		sockaddr_in clientAddr;
+		int clientAddrLen = sizeof(clientAddr);
+		// accept를 호출하고 클라이언트와 통신을 처리하는 코드를 추가
+		SOCKET clientSocket = accept(pMain->server.get_serverSocket(), (struct sockaddr*)&clientAddr, &clientAddrLen);
+		if (clientSocket != INVALID_SOCKET)
+		{
+			// 클라이언트가 연결되었을 때의 처리를 수행
+			// 예를 들어, 클라이언트와의 통신을 담당하는 함수를 호출
+			pMain->server.run(pMain->get_m_strLog());
+			closesocket(clientSocket); // 클라이언트 소켓 닫기
+		}
+
 		Sleep(3000);
-
-
 		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 
 	return 0;
 }
 
+
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
 	return this->m_flagListenClientThread;
+}
+
+CString CNUGUSEMserverGUIDlg::get_m_strLog()
+{
+	return this->m_strLog;
 }
 
 
@@ -227,6 +243,7 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	}
 	else if (server.get_Rflag() == 2) {
 		str += "\r\n";
+		std::cout << "uid_str:" << (CStringA)str;
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(str);

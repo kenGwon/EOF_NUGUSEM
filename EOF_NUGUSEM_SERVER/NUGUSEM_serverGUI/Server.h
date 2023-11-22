@@ -26,7 +26,7 @@ public:
     void run(CString& received_string);
     void set_Rflag(int Rflag/*receieve flag*/);
     int get_Rflag();
-
+    SOCKET get_serverSocket(); // 새로 추가한 함수
 private:
     WSADATA wsaData;
     SOCKET serverSocket;

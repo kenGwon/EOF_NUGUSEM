@@ -50,4 +50,5 @@ public:
 	LRESULT get_TCPIP_data(WPARAM wParam, LPARAM lParam);
 	BOOL get_m_flagListenClientThread();
 	Server server;
+	CString get_m_strLog();
 };
