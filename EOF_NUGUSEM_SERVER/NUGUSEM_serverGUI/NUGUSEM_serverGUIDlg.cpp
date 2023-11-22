@@ -45,11 +45,6 @@ UINT ThreadForListening(LPVOID param)
 	return 0;
 }
 
-BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
-{
-	return this->m_flagListenClientThread;
-}
-
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -246,18 +241,18 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 	CString str;
 	server.run(str);
 
-	if (server.get_Rflag()==0) {
+	if (server.get_Rflag() == 0) {
 		// 이미지 출력용 png
 
- 		//picture control 띄우기
- 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
- 		ScreenToClient(m_cam_face_rect);
- 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+		//picture control 띄우기
+		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+		ScreenToClient(m_cam_face_rect);
+		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
 
 		server.set_Rflag(-1);
 	}
-	else if(server.get_Rflag() == 1){
+	else if (server.get_Rflag() == 1) {
 		// 로그 출력용 String
 		str += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
@@ -274,6 +269,8 @@ LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(str);
 	}
+	return 0;
+}
 
 
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
