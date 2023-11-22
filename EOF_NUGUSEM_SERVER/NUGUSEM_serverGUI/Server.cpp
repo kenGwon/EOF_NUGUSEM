@@ -107,7 +107,8 @@ CString Server::receiveRFID_UID(SOCKET clientSocket) {
 
     if (uidBytesRead > 0) {
         uidBuffer[uidBytesRead] = '\0';
-        std::cout << "Received RFID UID from client: " << uidBuffer << std::endl;
+        std::cout << "Received RFID UID from client: " << uidBuffer<< std::endl;
+
     }
     else {
         std::cerr << "Error receiving RFID UID data" << std::endl;

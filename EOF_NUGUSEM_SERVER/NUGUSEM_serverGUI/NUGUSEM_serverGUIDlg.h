@@ -43,8 +43,8 @@ private:
 
 	CEdit m_controlLog;
 	CString m_strLog;
-	CWinThread* m_pThread;
-
+	CWinThread* m_pThread;//server
+	CWinThread* m_cThread;//commu
 public:
 	afx_msg void OnBnClickedOpen();
 	afx_msg void OnBnClickedClose();
