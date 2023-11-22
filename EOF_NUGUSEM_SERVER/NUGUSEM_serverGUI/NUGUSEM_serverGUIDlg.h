@@ -43,8 +43,8 @@ private:
 
 	CEdit m_controlLog;
 	CString m_strLog;
-	CWinThread* m_pThread;
-
+	CWinThread* m_pThread;//server
+	CWinThread* m_cThread;//commu
 public:
 	afx_msg void OnBnClickedOpen();
 	afx_msg void OnBnClickedClose();
@@ -53,5 +53,6 @@ public:
 	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
 	
 	Server server;
+	CString get_m_strLog();
 	mariaDB DB;
 };

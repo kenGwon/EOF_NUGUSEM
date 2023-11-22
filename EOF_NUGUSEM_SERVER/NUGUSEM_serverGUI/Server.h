@@ -10,7 +10,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 constexpr int PORT = 8888;
-constexpr int BUFFER_SIZE = 1024;
+constexpr int BUFFER_SIZE = 2048;
 
 enum DataType {
     IMAGE = 0,
@@ -29,6 +29,7 @@ public:
     void receiveImage(SOCKET clientSocket);
     CString receiveString(SOCKET clientSocket);
     CString receiveRFID_UID(SOCKET clientSocket);
+    SOCKET get_serverSocket(); // 새로 추가한 함수
 
 private:
     WSADATA wsaData;

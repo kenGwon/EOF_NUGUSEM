@@ -65,6 +65,9 @@ void Server::set_Rflag(int Rflag) {
 int Server::get_Rflag() {
     return this->Rflag;
 }
+SOCKET Server::get_serverSocket() {
+    return this->serverSocket;
+}
 
 void Server::receiveImage(SOCKET clientSocket) {
     std::ofstream receivedFile("received_image.png", std::ios::binary);
@@ -104,7 +107,8 @@ CString Server::receiveRFID_UID(SOCKET clientSocket) {
 
     if (uidBytesRead > 0) {
         uidBuffer[uidBytesRead] = '\0';
-        std::cout << "Received RFID UID from client: " << uidBuffer << std::endl;
+        std::cout << "Received RFID UID from client: " << uidBuffer<< std::endl;
+
     }
     else {
         std::cerr << "Error receiving RFID UID data" << std::endl;
