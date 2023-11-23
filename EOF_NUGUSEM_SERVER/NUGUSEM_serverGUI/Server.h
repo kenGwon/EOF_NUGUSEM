@@ -7,30 +7,34 @@
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <atlstr.h>
+#include <mutex> // 추가된 헤더
 #pragma comment(lib, "Ws2_32.lib")
 
 constexpr int PORT = 8888;
-constexpr int BUFFER_SIZE = 2048;
-
+constexpr int BUFFER_SIZE = 1024;
+#define END_OF_IMAGE_MARKER 9
 enum DataType {
     IMAGE = 0,
     STRING = 1,
     RFID_UID = 2,
+    ACK = 9, 
 };
 
 class Server {
 public:
     Server();
     ~Server();
-
     void run(CString& received_string);
     void set_Rflag(int Rflag/*receieve flag*/);
     int get_Rflag();
     void receiveImage(SOCKET clientSocket);
     CString receiveString(SOCKET clientSocket);
     CString receiveRFID_UID(SOCKET clientSocket);
-    SOCKET get_serverSocket(); // 새로 추가한 함수
-
+    void sendImageToClient(const char* imagePath);
+    void sendImageToClientAsync(CString image_Path); // 비동기적으로 이미지를 클라이언트로 보내는 함수
+    void handleImageTransmissionCompleteMessage();
+    void sendAck(SOCKET clientSocket); // ACK 송신
+    bool isLastPacket(const char* buffer, int bytesRead);
 private:
     WSADATA wsaData;
     SOCKET serverSocket;
