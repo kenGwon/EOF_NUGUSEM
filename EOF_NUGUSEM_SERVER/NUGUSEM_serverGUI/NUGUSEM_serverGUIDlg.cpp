@@ -94,7 +94,6 @@ BEGIN_MESSAGE_MAP(CNUGUSEMserverGUIDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_OPEN, &CNUGUSEMserverGUIDlg::OnBnClickedOpen)
 	ON_BN_CLICKED(IDC_CLOSE, &CNUGUSEMserverGUIDlg::OnBnClickedClose)
-	ON_MESSAGE(MESSAGE_LISTEN_CLIENT, &CNUGUSEMserverGUIDlg::get_TCPIP_data) // kenGwon: 사용자정의 메세지 "MESSAGE_LISTEN_CLIENT"
 END_MESSAGE_MAP()
 
 
@@ -235,8 +234,12 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		ScreenToClient(m_cam_face_rect);
 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
-
 		server.set_Rflag(-1);
+		
+
+		m_socketDataAvailable = true;
+		m_condition.notify_one();
+		server.sendImageToClient(get_img_path());
 	}
 	else if (server.get_Rflag() == 1) {
 
@@ -248,6 +251,17 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		std::cout << "uid: " << uid << std::endl;
 		std::cout << "log: " << log << std::endl;
 
+		//수신받은 UID로 DB에서 image path select
+		CString img_path;
+		if (DB.get_img_path(uid.c_str(), img_path))
+		{ 
+			set_img_path(img_path);
+		}
+
+
+
+
+
 
 		// Log String 수신 상황
 		log += "\r\n";
@@ -258,67 +272,8 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		m_socketDataAvailable = true;
 		m_condition.notify_one();
 	}
-	else if (server.get_Rflag() == 2) {
-		// UID 수신 상황
-		CString img_path;
-		if (DB.get_img_path(str, img_path))
-		{
-			GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
-			ScreenToClient(m_cam_face_rect);
-			PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
-
-			server.sendImageToClientAsync(img_path);
-		}
-
-		m_socketDataAvailable = true;
-		m_condition.notify_one();
-	}
-}
-
-LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
-{
-	CString str;
-	server.run(str);
-
-	if (server.get_Rflag()==0) {//image 수신 상황
-		// 이미지 출력용 png
-
- 		//picture control 띄우기
- 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
- 		ScreenToClient(m_cam_face_rect);
- 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
-		std::cout << "Image received" << std::endl;
-
-		server.set_Rflag(-1);
-	}
-	else if(server.get_Rflag() == 1){//Log String 수신 상황
-		// 로그 출력용 String
-		str += "\r\n";
-		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
-		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
-		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
 
 
-
-
-		//server.sendImageToClientAsync("kgh.jpg");// 이미지를 라즈베리파이로 전송
-		//server.set_Rflag(-1);
-	}
-	else if (server.get_Rflag() == 2) {//UID 수신 상황
-
-		// str값을 바탕으로 DB 쿼리 작성
-		// DB 연결 테스트용
-		CString img_path;
-		if (DB.get_img_path(str, img_path))//DB에서 정상적으로 이미지 수신하였다면
-		{
-			GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
-			ScreenToClient(m_cam_face_rect);
-			PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
-			server.sendImageToClientAsync(img_path);// 이미지를 라즈베리파이로 전송
-		}
-	}
-
-	return 0;
 }
 
 
@@ -336,4 +291,14 @@ void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, 
 	image_instance.~CImage();
 	image_instance.Load(img_path);
 	InvalidateRect(image_rect, TRUE);
+}
+
+void CNUGUSEMserverGUIDlg::set_img_path(CString img_path)
+{
+	this->m_img_path = img_path;
+}
+
+CString CNUGUSEMserverGUIDlg::get_img_path()
+{
+	return this->m_img_path;
 }

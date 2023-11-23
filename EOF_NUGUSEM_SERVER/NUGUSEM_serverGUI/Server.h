@@ -16,7 +16,6 @@ constexpr int BUFFER_SIZE = 1024;
 enum DataType {
     IMAGE = 0,
     STRING = 1,
-    RFID_UID = 2,
     ACK = 9, 
 };
 
@@ -29,8 +28,7 @@ public:
     int get_Rflag();
     void receiveImage(SOCKET clientSocket);
     CString receiveString(SOCKET clientSocket);
-    CString receiveRFID_UID(SOCKET clientSocket);
-    void sendImageToClient(const char* imagePath);
+    void sendImageToClient(CString image_Path);
     void sendImageToClientAsync(CString image_Path); // 비동기적으로 이미지를 클라이언트로 보내는 함수
     void handleImageTransmissionCompleteMessage();
     void sendAck(SOCKET clientSocket); // ACK 송신
