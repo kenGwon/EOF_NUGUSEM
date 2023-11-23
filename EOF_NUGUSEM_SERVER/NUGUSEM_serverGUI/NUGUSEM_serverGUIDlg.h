@@ -49,7 +49,7 @@ private:
 	std::mutex m_socketMutex;
 	std::condition_variable m_condition;
 	bool m_socketDataAvailable;
-
+	CString m_img_path;
 
 
 
@@ -58,10 +58,10 @@ private:
 public:
 	afx_msg void OnBnClickedOpen();
 	afx_msg void OnBnClickedClose();
-	LRESULT get_TCPIP_data(WPARAM wParam, LPARAM lParam);
 	BOOL get_m_flagListenClientThread();
 	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
-	
+	void set_img_path(CString img_path);
+	CString get_img_path();
 	Server server;
 	mariaDB DB;
 

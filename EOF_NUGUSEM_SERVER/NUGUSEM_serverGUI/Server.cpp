@@ -40,9 +40,8 @@ void Server::run(CString& received_string) {
 
     if (dataType == IMAGE) {
         receiveImage(clientSocket);
-        set_Rflag(0);
         sendAck(clientSocket); // 이미지 수신 완료 후 ACK 전송
-
+        set_Rflag(0);
         
     }
     else if (dataType == STRING) {
@@ -50,12 +49,6 @@ void Server::run(CString& received_string) {
         received_string = receiveString(clientSocket);
         set_Rflag(1);
         sendAck(clientSocket); // 문자열 수신 완료 후 ACK 전송
-
-    }
-    else if (dataType == RFID_UID) {
-        received_string = receiveRFID_UID(clientSocket);
-        set_Rflag(2);
-        sendAck(clientSocket); // RFID UID 수신 완료 후 ACK 전송
 
     }
     else {
@@ -133,34 +126,17 @@ CString Server::receiveString(SOCKET clientSocket) {
     return receivedString;
 }
 
-CString Server::receiveRFID_UID(SOCKET clientSocket) {
-    char uidBuffer[BUFFER_SIZE];
-    int uidBytesRead = recv(clientSocket, uidBuffer, BUFFER_SIZE, 0);
-
-    if (uidBytesRead > 0) {
-        uidBuffer[uidBytesRead] = '\0';  // 문자열을 null로 종료
-        std::cout << "클라이언트에서 받은 RFID UID: " << uidBuffer << std::endl;
-    }
-    else {
-        std::cerr << "Error receiving RFID UID data" << std::endl;
-    }
-
-    CStringA receivedUID(uidBuffer);
-    set_Rflag(2);//2:RFID_UID
-
-    return receivedUID;
-}
 
 
-void Server::sendImageToClient(const char* imagePath) {
+void Server::sendImageToClient(CString image_Path) {
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
     SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
 
-    std::ifstream imageFile(imagePath, std::ios::binary);
+    std::ifstream imageFile(image_Path, std::ios::binary);
 
     if (!imageFile.is_open()) {
-        std::cerr << "Error opening image file: " << imagePath << std::endl;
+        std::cerr << "Error opening image file: " << image_Path << std::endl;
         closesocket(clientSocket);
         return;
     }
@@ -195,13 +171,14 @@ void Server::sendImageToClient(const char* imagePath) {
 }
 
 void Server::sendImageToClientAsync(CString image_Path) {
+    std::cout << "sendImageToClientAsync" << std::endl;
     // 이미지를 전송하는 스레드 생성
     std::thread([this, image_Path]() {
         // imagePathA는 이 스레드에서만 사용될 것이므로 복사본을 사용
         sockaddr_in clientAddr;
         int clientAddrLen = sizeof(clientAddr);
         SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-
+       
         if (clientSocket == INVALID_SOCKET) {
             std::cerr << "Error accepting client connection: " << WSAGetLastError() << std::endl;
             return;
@@ -256,7 +233,8 @@ void Server::handleImageTransmissionCompleteMessage() {
 
 
 }
+
 void Server::sendAck(SOCKET clientSocket) {
-    DataType ackType = ACK;
+    DataType ackType = ACK;//9를 보내주는거임.
     send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
 }
