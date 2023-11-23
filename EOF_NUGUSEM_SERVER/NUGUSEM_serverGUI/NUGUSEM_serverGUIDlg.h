@@ -43,8 +43,18 @@ private:
 
 	CEdit m_controlLog;
 	CString m_strLog;
-	CWinThread* m_pThread;//server
-	CWinThread* m_cThread;//commu
+	CWinThread* m_pThread;
+
+	// 비동기 소켓 통신을 위한 변수 및 함수 추가
+	std::mutex m_socketMutex;
+	std::condition_variable m_condition;
+	bool m_socketDataAvailable;
+
+
+
+
+
+
 public:
 	afx_msg void OnBnClickedOpen();
 	afx_msg void OnBnClickedClose();
@@ -53,6 +63,9 @@ public:
 	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
 	
 	Server server;
-	CString get_m_strLog();
 	mariaDB DB;
+
+
+	// 비동기 소켓 통신을 위한 함수
+	void ListenClientAsync();
 };
