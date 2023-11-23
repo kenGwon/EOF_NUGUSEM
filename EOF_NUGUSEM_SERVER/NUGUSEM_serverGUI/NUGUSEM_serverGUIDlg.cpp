@@ -21,38 +21,16 @@
 UINT ThreadForListening(LPVOID param)
 {
 	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
-	std::cout << "ThreadForListening" << std::endl;
+
 	while (pMain->get_m_flagListenClientThread())
 	{
-
 		Sleep(3000);
 
-		std::cout << "PostMessage" << std::endl;
-		PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
-	}
-
-	return 0;
-}
-
-UINT cThreadForListening(LPVOID param)
-{
-	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
-	std::cout << "ThreadForListening" << std::endl;
-	while (pMain->get_m_flagListenClientThread())
-	{
-		sockaddr_in clientAddr;
-
-
-		int clientAddrLen = sizeof(clientAddr);
-		// accept를 호출하고 클라이언트와 통신을 처리하는 코드를 추가
-		SOCKET clientSocket = accept(pMain->server.get_serverSocket(), (struct sockaddr*)&clientAddr, &clientAddrLen);/*accept에서 자꾸 걸려서 쓰레딩이 안되요~ㅜㅠ*/
-		if (clientSocket != INVALID_SOCKET)
-		{
-			// 클라이언트가 연결되었을 때의 처리를 수행
-			// 예를 들어, 클라이언트와의 통신을 담당하는 함수를 호출
-			pMain->server.run(pMain->get_m_strLog());
-			closesocket(clientSocket); // 클라이언트 소켓 닫기
-		}
+		// 비동기 소켓 통신 함수 호출
+		pMain->ListenClientAsync();
+		
+		//메인 쓰레드 에서 소켓 통신 함수 호출
+		//PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 
 	}
 
@@ -153,10 +131,9 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
-	m_flagListenClientThread = TRUE; // 스레드 
+	m_flagListenClientThread = TRUE;
+	m_socketDataAvailable = false;
 	m_pThread = AfxBeginThread(ThreadForListening, this);
-	m_cThread = AfxBeginThread(cThreadForListening, this);
-
 
 
 
@@ -243,49 +220,104 @@ void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 
 }
 
-LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
+
+// 비동기 소켓 통신 함수 정의
+void CNUGUSEMserverGUIDlg::ListenClientAsync()
 {
+	std::unique_lock<std::mutex> lock(m_socketMutex);
+
 	CString str;
 	server.run(str);
-	std::cout << "running" << std::endl;
+
 	if (server.get_Rflag() == 0) {
 		// 이미지 출력용 png
-
-		//picture control 띄우기
 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
 		ScreenToClient(m_cam_face_rect);
 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
-		//std::cout << "Image received" << std::endl;
+		std::cout << "Image received" << std::endl;
 
 		server.set_Rflag(-1);
 	}
 	else if (server.get_Rflag() == 1) {
+
+		std::string input = std::string(CT2CA(str));
+		int pos=0;
+		std::string uid = input.substr(0, input.find("@", 0));
+		std::string log = input.substr(input.find("@", 0) + 1, input.length());
+		
+		std::cout << "uid: " << uid << std::endl;
+		std::cout << "log: " << log << std::endl;
+
+
+		// Log String 수신 상황
+		log += "\r\n";
+		int nLength = m_controlLog.GetWindowTextLength();
+		m_controlLog.SetSel(nLength, nLength);
+		m_controlLog.ReplaceSel(log.c_str());
+
+		m_socketDataAvailable = true;
+		m_condition.notify_one();
+	}
+	else if (server.get_Rflag() == 2) {
+		// UID 수신 상황
+		CString img_path;
+		if (DB.get_img_path(str, img_path))
+		{
+			GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+			ScreenToClient(m_cam_face_rect);
+			PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
+
+			server.sendImageToClientAsync(img_path);
+		}
+
+		m_socketDataAvailable = true;
+		m_condition.notify_one();
+	}
+}
+
+LRESULT CNUGUSEMserverGUIDlg::get_TCPIP_data(WPARAM wParam, LPARAM lParam)
+{
+	CString str;
+	server.run(str);
+
+	if (server.get_Rflag()==0) {//image 수신 상황
+		// 이미지 출력용 png
+
+ 		//picture control 띄우기
+ 		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+ 		ScreenToClient(m_cam_face_rect);
+ 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+		std::cout << "Image received" << std::endl;
+
+		server.set_Rflag(-1);
+	}
+	else if(server.get_Rflag() == 1){//Log String 수신 상황
 		// 로그 출력용 String
 		str += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength(); // 문자열의 길이를 알아냄
 		m_controlLog.SetSel(nLength, nLength); // 마지막 줄을 선택함
 		m_controlLog.ReplaceSel(str); // 선택된 행의 텍스트를 교체
 
-		server.set_Rflag(-1);
-	}
-	else if (server.get_Rflag() == 2) {
-		std::cout << "UID received" << std::endl;
 
+
+
+		//server.sendImageToClientAsync("kgh.jpg");// 이미지를 라즈베리파이로 전송
+		//server.set_Rflag(-1);
+	}
+	else if (server.get_Rflag() == 2) {//UID 수신 상황
+
+		// str값을 바탕으로 DB 쿼리 작성
 		// DB 연결 테스트용
-		CString img_path;//imageg path 저장용 string
-		DB.get_img_path(str, img_path);
-		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
-		ScreenToClient(m_cam_face_rect);
-		PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
-
-		std::cout << "Image received" << std::endl;
-
-		server.set_Rflag(-1);
-
-
-
-
+		CString img_path;
+		if (DB.get_img_path(str, img_path))//DB에서 정상적으로 이미지 수신하였다면
+		{
+			GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+			ScreenToClient(m_cam_face_rect);
+			PrintImage(img_path, m_cam_face_image, m_cam_face_rect);
+			server.sendImageToClientAsync(img_path);// 이미지를 라즈베리파이로 전송
+		}
 	}
+
 	return 0;
 }
 
@@ -304,9 +336,4 @@ void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, 
 	image_instance.~CImage();
 	image_instance.Load(img_path);
 	InvalidateRect(image_rect, TRUE);
-}
-
-CString CNUGUSEMserverGUIDlg::get_m_strLog()
-{
-	return this->m_strLog;
 }

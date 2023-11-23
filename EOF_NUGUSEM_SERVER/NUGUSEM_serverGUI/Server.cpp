@@ -38,21 +38,30 @@ void Server::run(CString& received_string) {
         closesocket(clientSocket);
     }
 
-    switch (dataType) {
-    case IMAGE:
+    if (dataType == IMAGE) {
         receiveImage(clientSocket);
         set_Rflag(0);
-        break;
-    case STRING:
+        sendAck(clientSocket); // 이미지 수신 완료 후 ACK 전송
+
+        
+    }
+    else if (dataType == STRING) {
+        //handleImageTransmissionCompleteMessage(); // 이미지 전송 완료 메시지 처리
         received_string = receiveString(clientSocket);
         set_Rflag(1);
-        break;
-    case RFID_UID:
+        sendAck(clientSocket); // 문자열 수신 완료 후 ACK 전송
+
+    }
+    else if (dataType == RFID_UID) {
         received_string = receiveRFID_UID(clientSocket);
         set_Rflag(2);
-        break;
-    default:
+        sendAck(clientSocket); // RFID UID 수신 완료 후 ACK 전송
+
+    }
+    else {
         std::cerr << "Unknown data type received" << std::endl;
+        closesocket(clientSocket);
+        return;
     }
 
     closesocket(clientSocket);
@@ -65,9 +74,26 @@ void Server::set_Rflag(int Rflag) {
 int Server::get_Rflag() {
     return this->Rflag;
 }
-SOCKET Server::get_serverSocket() {
-    return this->serverSocket;
+
+
+
+
+// 이미지 데이터를 수신했는지 확인하는 함수
+bool Server::isLastPacket(const char* buffer, int bytesRead) {
+    // 마지막 패킷을 확인할 수 있는 조건을 추가
+    // 여기서는 buffer의 마지막 4바이트가 END_OF_IMAGE_MARKER인지 확인
+
+    if (bytesRead >= sizeof(int)) {
+        int marker;
+        memcpy(&marker, buffer + bytesRead - sizeof(int), sizeof(int));
+
+        return marker == END_OF_IMAGE_MARKER;
+    }
+
+    return false; // 마지막 패킷이 아니라면 false 반환
 }
+
+
 
 void Server::receiveImage(SOCKET clientSocket) {
     std::ofstream receivedFile("received_image.png", std::ios::binary);
@@ -77,11 +103,17 @@ void Server::receiveImage(SOCKET clientSocket) {
     while ((bytesRead = recv(clientSocket, buffer, BUFFER_SIZE, 0)) > 0) {
         receivedFile.write(buffer, bytesRead);
         std::cout << "Received " << bytesRead << " bytes of image data from client" << std::endl;
+
+        // 마지막 패킷인지 확인
+        if (isLastPacket(buffer, bytesRead)) {
+            set_Rflag(0); // 이미지 flag
+            std::cout << "Image received and saved as received_image.png" << std::endl;
+            
+            break;
+        }
     }
 
     receivedFile.close();
-    set_Rflag(0);//image flag
-    std::cout << "Image received and saved as received_image.png" << std::endl;
 }
 
 CString Server::receiveString(SOCKET clientSocket) {
@@ -96,7 +128,7 @@ CString Server::receiveString(SOCKET clientSocket) {
         std::cerr << "Error receiving string data" << std::endl;
     }
 
-    CStringW receivedString(stringBuffer);
+    CStringA receivedString(stringBuffer);
     set_Rflag(1);//1:string for log
     return receivedString;
 }
@@ -106,15 +138,125 @@ CString Server::receiveRFID_UID(SOCKET clientSocket) {
     int uidBytesRead = recv(clientSocket, uidBuffer, BUFFER_SIZE, 0);
 
     if (uidBytesRead > 0) {
-        uidBuffer[uidBytesRead] = '\0';
-        std::cout << "Received RFID UID from client: " << uidBuffer<< std::endl;
-
+        uidBuffer[uidBytesRead] = '\0';  // 문자열을 null로 종료
+        std::cout << "클라이언트에서 받은 RFID UID: " << uidBuffer << std::endl;
     }
     else {
         std::cerr << "Error receiving RFID UID data" << std::endl;
     }
 
-    CStringW receivedUID(uidBuffer);
+    CStringA receivedUID(uidBuffer);
     set_Rflag(2);//2:RFID_UID
+
     return receivedUID;
+}
+
+
+void Server::sendImageToClient(const char* imagePath) {
+    sockaddr_in clientAddr;
+    int clientAddrLen = sizeof(clientAddr);
+    SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+
+    std::ifstream imageFile(imagePath, std::ios::binary);
+
+    if (!imageFile.is_open()) {
+        std::cerr << "Error opening image file: " << imagePath << std::endl;
+        closesocket(clientSocket);
+        return;
+    }
+
+    char buffer[BUFFER_SIZE];
+    int bytesRead;
+
+    try {
+        while ((bytesRead = imageFile.read(buffer, BUFFER_SIZE).gcount()) > 0) {
+            int bytesSent = send(clientSocket, buffer, bytesRead, 0);
+
+            if (bytesSent == SOCKET_ERROR) {
+                std::cerr << "Error sending image data: " << WSAGetLastError() << std::endl;
+                break;
+            }
+
+            std::cout << "Sent " << bytesSent << " bytes of image data to client" << std::endl;
+        }
+
+        // 클라이언트에게 이미지 전송이 완료되었음을 알리는 메시지 전송
+        DataType endTransmission = STRING;
+        send(clientSocket, reinterpret_cast<char*>(&endTransmission), sizeof(DataType), 0);
+    }
+    catch (const std::exception& e) {
+        std::cerr << "Error reading image file: " << e.what() << std::endl;
+    }
+
+    imageFile.close();
+    std::cout << "Image sent to client" << std::endl;
+    closesocket(clientSocket); // 이미지를 전송한 후에 소켓을 닫습니다.
+    std::cout << "client Socket Off" << std::endl;
+}
+
+void Server::sendImageToClientAsync(CString image_Path) {
+    // 이미지를 전송하는 스레드 생성
+    std::thread([this, image_Path]() {
+        // imagePathA는 이 스레드에서만 사용될 것이므로 복사본을 사용
+        sockaddr_in clientAddr;
+        int clientAddrLen = sizeof(clientAddr);
+        SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+
+        if (clientSocket == INVALID_SOCKET) {
+            std::cerr << "Error accepting client connection: " << WSAGetLastError() << std::endl;
+            return;
+        }
+
+        std::ifstream imageFile(image_Path, std::ios::binary);
+
+        if (!imageFile.is_open()) {
+            std::cerr << "Error opening image file: " << image_Path << std::endl;
+            closesocket(clientSocket);
+            return;
+        }
+
+        char buffer[BUFFER_SIZE];
+        int bytesRead;
+
+        try {
+            while ((bytesRead = imageFile.read(buffer, BUFFER_SIZE).gcount()) > 0) {
+                int bytesSent = send(clientSocket, buffer, bytesRead, 0);
+
+                if (bytesSent == SOCKET_ERROR) {
+                    std::cerr << "Error sending image data: " << WSAGetLastError() << std::endl;
+                    break;
+                }
+
+                std::cout << "Sent " << bytesSent << " bytes of image data to client" << std::endl;
+            }
+
+            // 클라이언트에게 이미지 전송이 완료되었음을 알리는 메시지 전송
+            DataType endTransmission = STRING;
+            send(clientSocket, reinterpret_cast<char*>(&endTransmission), sizeof(DataType), 0);
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Error reading image file: " << e.what() << std::endl;
+        }
+
+        imageFile.close();
+        std::cout << "Image sent to client" << std::endl;
+
+        // 이미지 전송이 완료된 후에 소켓을 닫습니다.
+        closesocket(clientSocket);
+        std::cout << "client Socket Off" << std::endl;
+
+        // 이미지 전송이 완료된 후에 추가 작업을 수행할 수 있습니다.
+        handleImageTransmissionCompleteMessage();
+        }).detach();
+}
+
+void Server::handleImageTransmissionCompleteMessage() {
+    std::cout << "Image transmission complete message received from client" << std::endl;
+    // 이미지 전송 완료 후의 추가 작업을 여기에 추가합니다.
+
+
+}
+void Server::sendAck(SOCKET clientSocket) {
+    DataType ackType = ACK;
+    send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
 }
