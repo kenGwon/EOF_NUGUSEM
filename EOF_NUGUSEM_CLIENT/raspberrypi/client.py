@@ -1,11 +1,10 @@
 import socket
 import struct
-import threading
 import serial
 import time
 from datetime import datetime
 
-class TcpClient:
+class ClientCommunication:
     def __init__(self, server_ip, port):
         self.server_ip = server_ip
         self.port = port
@@ -22,22 +21,10 @@ class TcpClient:
         except ConnectionRefusedError:
             print("서버에 연결할 수 없습니다.")
             self.client_socket = None  # 연결 실패 시 client_socket을 None으로 설정
-    def wait_for_ACK(self):
-        ACK = 9
-        ack_type_header = self.client_socket.recv(4)
 
-        # 수신된 데이터가 비어 있는지 확인
-        if not ack_type_header:
-            print("오류: 데이터를 수신하지 못했습니다.")
-            return
-
-        ack_type = struct.unpack("I", ack_type_header)[0]
-        if ack_type == ACK:
-            print("ACK를 받았습니다.")
-        else:
-            print("오류: 예상치 않은 ACK 유형입니다.")
-
-
+    def close_connection(self):
+        self.client_socket.close()
+    
 
     def send_data_type(self, data_type):
         if self.client_socket is not None:  # client_socket이 None이 아닌지 확인
@@ -49,7 +36,20 @@ class TcpClient:
         else:
             print("클라이언트 소켓이 초기화되지 않았습니다. 연결이 실패했을 수 있습니다.")
 
-    def send_image(self, image_path):
+    def receive_data_type(self):
+        # 데이터 유형 수신
+        data_type_header = self.client_socket.recv(4)
+
+        # 데이터 언팩에 충분한 데이터가 있는지 확인
+        if len(data_type_header) < 4:
+            print("오류: 데이터 언팩에 충분한 데이터가 없습니다.")
+            return -1
+
+        data_type = struct.unpack("I", data_type_header)[0]
+        return data_type
+    
+
+    def send_image_to_server(self, image_path):
         self.connect_to_server()
         self.send_data_type(0)  # 이미지
 
@@ -64,24 +64,7 @@ class TcpClient:
                 self.client_socket.sendall(image_data)
         print("이미지를 서버로 보냈습니다.")
 
-    def receive_data_type(self):
-        # 데이터 유형 수신
-        data_type_header = self.client_socket.recv(4)
-
-        # 데이터 언팩에 충분한 데이터가 있는지 확인
-        if len(data_type_header) < 4:
-            print("오류: 데이터 언팩에 충분한 데이터가 없습니다.")
-            return -1
-
-        data_type = struct.unpack("I", data_type_header)[0]
-        return data_type
-
-    def close_connection(self):
-        self.client_socket.close()
-        
-    
-
-    def receive_image_from_server(self, save_path="received_image.jpg"):
+    def receive_image_from_server(self, save_path="resources/received_image.jpg"):
         try:
             # 데이터 형식 식별자 및 이미지 파일의 크기 수신
             data_type_header = self.client_socket.recv(4)
@@ -107,16 +90,15 @@ class TcpClient:
                     image_file.write(received_data)
 
                 print("Image received and saved")
-                # 받았다는 신호가 필요함.. flag 필요
-                
             else:
                 print("Error: Image header does not contain '3'")
-
         except Exception as e:
             print(f"Error: {e}")
+        finally:
+            pass
 
 
-    def receive_uid_and_send_image(self):
+    def communicate(self):
         # Arduino에서 UID 수신 및 서버로 전송
         ser = serial.Serial('/dev/ttyACM0', 9600)
 
@@ -127,56 +109,56 @@ class TcpClient:
                     uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
                     print("받은 UID:", uid)
 
-                    # RFID UID를 서버로 전송
+                    
 
                     try:
+                        # 송신용 소켓 오픈
                         self.connect_to_server()
                         
-                        
-                        #tcp_client.send_data_type(2)  # RFID_UID
-                        #tcp_client.client_socket.sendall(uid.encode("utf-8"))
-                        #print("RFID UID를 서버로 보냈습니다.")
-                        #tcp_client.wait_for_ACK()
-                        
-                        
-                        self.send_data_type(1)  # Log string
+                        self.send_data_type(1) # string
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
                         send_data = uid + "@" + log
-                        
                         self.client_socket.sendall(send_data.encode("utf-8"))
-                        print("Log를 서버로 보냈습니다.")
+                        print("UID + Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()
                         time.sleep(0.5)  
-                            
-                        
-                        
-                        self.send_data_type(0)  # image
-                        self.send_image("captured_image.png")# 이미지를 서버로 송신
+                                               
+                        self.send_data_type(0) # image binary
+                        self.send_image_to_server("resources/captured_image.png")
                         # tcp_client.wait_for_ACK()
-                        self.close_connection()
-                        #time.sleep(1)
                         
-                        self.connect_to_server()
-                        self.receive_image_from_server() # 서버로부터 이미지를 수신
-                        # time.sleep(0.5)  
-                        
-                        #ACK 송신
                         self.close_connection()
                         
 
+                        # 수신용 소켓 오픈
+                        self.connect_to_server()
+                        self.receive_image_from_server()
+                        self.close_connection()
                     except Exception as e:
                         print(f"통신 오류: {e}")
                     finally:
                         self.close_connection()
                         self.img_rcv_flag = True # 플래그 처리는 여기 있어야 함
-                        self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함
+                        self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함 ### 의심
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
         finally:
             ser.close()
 
-if __name__ == "__main__":
-    myTcpClient = TcpClient("10.10.15.58", 8888)
-    myTcpClient.receive_uid_and_send_image()
+    """
+    def wait_for_ACK(self):
+        ACK = 9
+        ack_type_header = self.client_socket.recv(4)
+
+        # 수신된 데이터가 비어 있는지 확인
+        if not ack_type_header:
+            print("오류: 데이터를 수신하지 못했습니다.")
+            return
+
+        ack_type = struct.unpack("I", ack_type_header)[0]
+        if ack_type == ACK:
+            print("ACK를 받았습니다.")
+        else:
+            print("오류: 예상치 않은 ACK 유형입니다.")
+    """

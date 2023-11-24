@@ -5,11 +5,11 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget
 import serial
 import time
-import TCPIP
+import client
 import face_detector
 
 
-myTCPIP = TCPIP.TcpClient("10.10.15.58", 8888)
+myTCPIP = client.TcpClient("10.10.15.58", 8888)
 myFACEDETECTOR = face_detector.FaceDetector()
 
 class WebcamThread(QThread):
