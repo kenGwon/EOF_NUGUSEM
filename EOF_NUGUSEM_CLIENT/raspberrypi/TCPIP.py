@@ -11,7 +11,7 @@ class TcpClient:
         self.port = port
         self.client_socket = None
         self.rfid_tag_flag = False
-        self.img_rcv_flag = True
+        self.img_rcv_flag = False
         
 
     def connect_to_server(self):
@@ -127,9 +127,6 @@ class TcpClient:
                     uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
                     print("받은 UID:", uid)
 
-
-                    self.rfid_tag_flag = True
-
                     # RFID UID를 서버로 전송
 
                     try:
@@ -162,16 +159,19 @@ class TcpClient:
                         
                         self.connect_to_server()
                         self.receive_image_from_server() # 서버로부터 이미지를 수신
+                        # time.sleep(0.5)  
+                        
                         #ACK 송신
                         self.close_connection()
-                        self.img_rcv_flag = True
-
-
+                        
 
                     except Exception as e:
                         print(f"통신 오류: {e}")
                     finally:
                         self.close_connection()
+                        self.img_rcv_flag = True # 플래그 처리는 여기 있어야 함
+                        self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함
+
         except KeyboardInterrupt:
             print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
         finally:

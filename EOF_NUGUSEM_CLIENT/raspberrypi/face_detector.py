@@ -156,10 +156,10 @@ class FaceDetector():
                 if confidence > 75:
                     name = self.label_name[str(id_)] #ID를 이용하여 이름 가져오기
                     cv2.putText(img, name, (250, 450), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 2)
-                    self.verify_flag=True
+                    #self.verify_flag=True
                 else:
                     cv2.putText(img, "OutSider!", (250, 450), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-                    self.verify_flag=False
+                    #self.verify_flag=False
             except:
                 cv2.putText(img, "Face Not Found", (400,500), cv2.FONT_HERSHEY_COMPLEX, 1, (255,0,0),2)
                 print("Face Not Found!")

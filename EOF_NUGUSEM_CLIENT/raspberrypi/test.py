@@ -62,16 +62,10 @@ class WebcamThread(QThread):
                     #myTCPIP.img_save_flag = True
 
 
-                    # 여기서 항상 얼굴을 detect를 시도해서 최신화된 얼굴 영역 사진 파일을 별도로 들고 있어야함
-                    # MFC에 가는 이미지는 자연스러운 순간의 이미지여도 ok
-                    # 다만 아래 if문에 들어갔을 때 predict 되어야 하는 이미지는 이 타이밍에 걸러진 얼굴영역 사진
-
-
-
-
                     if myTCPIP.img_rcv_flag:
 
-                        print("들어왔니")
+                        print("서버 통신 끝")
+                       
 
                         # 이미지 파일 경로
                         captured_image_path = "face_on_captured_image.jpg"
@@ -85,23 +79,21 @@ class WebcamThread(QThread):
                         ri_id_, ri_conf = myFACEDETECTOR.model.predict(received_image_mat)
                         ci_id_, ci_conf = myFACEDETECTOR.model.predict(captured_image_gray)
                         
+                        print(f"ri_id_: {ri_id_}")
+                        print(f"ci_id_: {ci_id_}")
 
                         if ci_id_ == ri_id_:
                             print("동일인")
-                            #동일인 플래그
                         else:
                             print("다른 사람")
-                            #
                 
                         
 
-                        with open(captured_image_path, "wb") as f:
-                            f.write(b"")  # 빈 이진 데이터로 덮어쓰기
 
                         #face verify
                         myTCPIP.img_rcv_flag = False 
                         
-                    myFACEDETECTOR.verify_flag = False
+                    # myFACEDETECTOR.verify_flag = False
 
         cap.release()
 
