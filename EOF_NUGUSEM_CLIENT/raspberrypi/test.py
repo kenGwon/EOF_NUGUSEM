@@ -6,15 +6,16 @@ from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWid
 import serial
 import time
 import TCPIP
-
+import face_detector
 
 
 myTCPIP = TCPIP.TcpClient("10.10.15.58", 8888)
-
+myFACEDETECTOR = face_detector.FaceDetector()
 
 class WebcamThread(QThread):
     global myTCPIP
     change_pixmap_signal = pyqtSignal(QImage)
+    
 
     def run(self):
         cap = cv2.VideoCapture(0)
@@ -23,8 +24,9 @@ class WebcamThread(QThread):
             ret, frame = cap.read()
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
+                rgb_image = myFACEDETECTOR.verify_face(rgb_image) #########
                 # 박스가 적용된 이미지
+
 
 
                 h, w, ch = rgb_image.shape
@@ -33,20 +35,73 @@ class WebcamThread(QThread):
                 p = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(p)
                 
-                if myTCPIP.rfid_tag_flag:
+
+                gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                face_area_info = myFACEDETECTOR.face_classifier.detectMultiScale(gray_image, scaleFactor=1.5, minNeighbors=5)
+                
+                if len(face_area_info):
+                    x = face_area_info[0][0]
+                    y = face_area_info[0][1]
+                    width = face_area_info[0][2]
+                    height = face_area_info[0][3]
+                
+                    face_gray_image = gray_image[y:y+height, x:x+width]
+                    image_filename = "face_on_captured_image.jpg"
+                    cv2.imwrite(image_filename, face_gray_image)                     
+
+
+                if myTCPIP.rfid_tag_flag: # and myFACEDETECTOR.verify_flag
+                    
                     print("웹캠 이미지 캡쳐")
                     # 현재의 이미지를 저장하고, 서버로 ... 일련의 작업
-                    image_filename = f"captured_image.png"
+                    image_filename = "captured_image.png"
                     
                     # 이미지 저장
-                    cv2.imwrite(image_filename, frame)
+                    cv2.imwrite(image_filename, frame) #### TCPIP.py 158번재 라인이 참조하는 실제파일 저장 타이밍
                     myTCPIP.rfid_tag_flag = False
                     #myTCPIP.img_save_flag = True
+
+
+                    # 여기서 항상 얼굴을 detect를 시도해서 최신화된 얼굴 영역 사진 파일을 별도로 들고 있어야함
+                    # MFC에 가는 이미지는 자연스러운 순간의 이미지여도 ok
+                    # 다만 아래 if문에 들어갔을 때 predict 되어야 하는 이미지는 이 타이밍에 걸러진 얼굴영역 사진
+
+
+
+
+                    if myTCPIP.img_rcv_flag:
+
+                        print("들어왔니")
+
+                        # 이미지 파일 경로
+                        captured_image_path = "face_on_captured_image.jpg"
+                        received_image_path = "received_image.jpg"
+
+                        # 이미지 읽기
+                        received_image_mat = cv2.cvtColor(cv2.imread(received_image_path), cv2.COLOR_BGR2GRAY)
+                        captured_image_gray = cv2.cvtColor(cv2.imread(captured_image_path), cv2.COLOR_BGR2GRAY)
+                        
                     
+                        ri_id_, ri_conf = myFACEDETECTOR.model.predict(received_image_mat)
+                        ci_id_, ci_conf = myFACEDETECTOR.model.predict(captured_image_gray)
+                        
 
+                        if ci_id_ == ri_id_:
+                            print("동일인")
+                            #동일인 플래그
+                        else:
+                            print("다른 사람")
+                            #
+                
+                        
 
+                        with open(captured_image_path, "wb") as f:
+                            f.write(b"")  # 빈 이진 데이터로 덮어쓰기
 
-					
+                        #face verify
+                        myTCPIP.img_rcv_flag = False 
+                        
+                    myFACEDETECTOR.verify_flag = False
 
         cap.release()
 
@@ -63,6 +118,7 @@ class CommThread(QThread):
         # ser = serial.Serial(self.serial_port, 9600, timeout=1)
 
         myTCPIP.receive_uid_and_send_image()
+
 """
         while True:
             

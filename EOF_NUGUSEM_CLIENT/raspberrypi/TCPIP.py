@@ -11,7 +11,8 @@ class TcpClient:
         self.port = port
         self.client_socket = None
         self.rfid_tag_flag = False
-        self.img_save_flag = False
+        self.img_rcv_flag = True
+        
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -149,9 +150,9 @@ class TcpClient:
                         self.client_socket.sendall(send_data.encode("utf-8"))
                         print("Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()
-                        time.sleep(0.125)  
+                        time.sleep(0.5)  
                             
-                        self.img_save_flag = False 
+                        
                         
                         self.send_data_type(0)  # image
                         self.send_image("captured_image.png")# 이미지를 서버로 송신
@@ -163,6 +164,8 @@ class TcpClient:
                         self.receive_image_from_server() # 서버로부터 이미지를 수신
                         #ACK 송신
                         self.close_connection()
+                        self.img_rcv_flag = True
+
 
 
                     except Exception as e:
