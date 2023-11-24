@@ -8,6 +8,7 @@ import time
 import TCPIP
 
 
+
 myTCPIP = TCPIP.TcpClient("10.10.15.58", 8888)
 
 
@@ -22,6 +23,10 @@ class WebcamThread(QThread):
             ret, frame = cap.read()
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                # 박스가 적용된 이미지
+
+
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
                 convert_to_qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
@@ -30,12 +35,23 @@ class WebcamThread(QThread):
                 
                 if myTCPIP.rfid_tag_flag:
                     print("웹캠 이미지 캡쳐")
-					# 현재의 이미지를 저장하고, 서버로 
+                    # 현재의 이미지를 저장하고, 서버로 ... 일련의 작업
+                    image_filename = f"captured_image.png"
+                    
+                    # 이미지 저장
+                    cv2.imwrite(image_filename, frame)
+                    myTCPIP.rfid_tag_flag = False
+                    #myTCPIP.img_save_flag = True
+                    
+
+
+
+					
 
         cap.release()
 
 
-class ArduinoThread(QThread):
+class CommThread(QThread):
     global myTCPIP
     data_received_signal = pyqtSignal(str)
 
@@ -46,7 +62,8 @@ class ArduinoThread(QThread):
     def run(self):
         # ser = serial.Serial(self.serial_port, 9600, timeout=1)
 
-        
+        myTCPIP.receive_uid_and_send_image()
+"""
         while True:
             
             myTCPIP.receive_uid_and_send_image()
@@ -58,7 +75,7 @@ class ArduinoThread(QThread):
                 
                 
             time.sleep(0.1)
-
+"""
 
 class App(QMainWindow):
     def __init__(self, serial_port):
@@ -73,9 +90,9 @@ class App(QMainWindow):
         self.initUI()
 
         self.serial_port = serial_port
-        self.arduino_thread = ArduinoThread(self.serial_port)
-        self.arduino_thread.data_received_signal.connect(self.update_data)
-        self.arduino_thread.start()
+        self.comm_thread = CommThread(self.serial_port)
+        self.comm_thread.data_received_signal.connect(self.update_data)
+        self.comm_thread.start()
 
     def initUI(self):
         self.setWindowTitle(self.title)

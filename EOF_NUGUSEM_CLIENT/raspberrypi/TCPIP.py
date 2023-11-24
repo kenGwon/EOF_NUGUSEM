@@ -3,11 +3,15 @@ import struct
 import threading
 import serial
 import time
+from datetime import datetime
+
 class TcpClient:
     def __init__(self, server_ip, port):
         self.server_ip = server_ip
         self.port = port
         self.client_socket = None
+        self.rfid_tag_flag = False
+        self.img_save_flag = False
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -111,61 +115,65 @@ class TcpClient:
             print(f"Error: {e}")
 
 
+    def receive_uid_and_send_image(self):
+        # Arduino에서 UID 수신 및 서버로 전송
+        ser = serial.Serial('/dev/ttyACM0', 9600)
+
+        try:
+            while True:
+                data = ser.readline().decode('utf-8').strip()
+                if data and data.startswith("U"):
+                    uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
+                    print("받은 UID:", uid)
 
 
+                    self.rfid_tag_flag = True
 
-def receive_uid_and_send_image():
-    # Arduino에서 UID 수신 및 서버로 전송
-    ser = serial.Serial('/dev/ttyACM0', 9600)
+                    # RFID UID를 서버로 전송
 
-    try:
-        while True:
-            data = ser.readline().decode('utf-8').strip()
-            if data and data.startswith("U"):
-                uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
-                print("받은 UID:", uid)
+                    try:
+                        self.connect_to_server()
+                        
+                        
+                        #tcp_client.send_data_type(2)  # RFID_UID
+                        #tcp_client.client_socket.sendall(uid.encode("utf-8"))
+                        #print("RFID UID를 서버로 보냈습니다.")
+                        #tcp_client.wait_for_ACK()
+                        
+                        
+                        self.send_data_type(1)  # Log string
+                        log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # RFID UID를 서버로 전송
-                tcp_client = TcpClient("10.10.15.58", 8888)
-                try:
-                    tcp_client.connect_to_server()
-                    
-                    
-                    #tcp_client.send_data_type(2)  # RFID_UID
-                    #tcp_client.client_socket.sendall(uid.encode("utf-8"))
-                    #print("RFID UID를 서버로 보냈습니다.")
-                    #tcp_client.wait_for_ACK()
-                    
-                    
-                    tcp_client.send_data_type(1)  # Log string
-                    Log = uid + "@" + "Log Test"
-                    
-                    tcp_client.client_socket.sendall(Log.encode("utf-8"))
-                    print("Log를 서버로 보냈습니다.")
-                    #tcp_client.wait_for_ACK()
-                    
-                    
-                    
-                    tcp_client.send_data_type(0)  # image
-                    tcp_client.send_image("gcc_version.png")# 이미지를 서버로 송신
-                    # tcp_client.wait_for_ACK()
-                    tcp_client.close_connection()
-                    #time.sleep(1)
-                    
-                    tcp_client.connect_to_server()
-                    tcp_client.receive_image_from_server() # 서버로부터 이미지를 수신
-                    #ACK 송신
-                    tcp_client.close_connection()
+                        send_data = uid + "@" + log
+                        
+                        self.client_socket.sendall(send_data.encode("utf-8"))
+                        print("Log를 서버로 보냈습니다.")
+                        #tcp_client.wait_for_ACK()
+                        time.sleep(0.125)  
+                            
+                        self.img_save_flag = False 
+                        
+                        self.send_data_type(0)  # image
+                        self.send_image("captured_image.png")# 이미지를 서버로 송신
+                        # tcp_client.wait_for_ACK()
+                        self.close_connection()
+                        #time.sleep(1)
+                        
+                        self.connect_to_server()
+                        self.receive_image_from_server() # 서버로부터 이미지를 수신
+                        #ACK 송신
+                        self.close_connection()
 
 
-                except Exception as e:
-                    print(f"통신 오류: {e}")
-                finally:
-                    tcp_client.close_connection()
-    except KeyboardInterrupt:
-        print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
-    finally:
-        ser.close()
+                    except Exception as e:
+                        print(f"통신 오류: {e}")
+                    finally:
+                        self.close_connection()
+        except KeyboardInterrupt:
+            print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
+        finally:
+            ser.close()
 
 if __name__ == "__main__":
-    receive_uid_and_send_image()
+    myTcpClient = TcpClient("10.10.15.58", 8888)
+    myTcpClient.receive_uid_and_send_image()
