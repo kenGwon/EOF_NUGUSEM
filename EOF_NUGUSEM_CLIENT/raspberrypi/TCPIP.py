@@ -1,4 +1,3 @@
-
 import socket
 import struct
 import threading
@@ -22,16 +21,17 @@ class TcpClient:
         ACK = 9
         ack_type_header = self.client_socket.recv(4)
 
-        # Check if received data is empty
+        # 수신된 데이터가 비어 있는지 확인
         if not ack_type_header:
-            print("Error: No data received.")
+            print("오류: 데이터를 수신하지 못했습니다.")
             return
 
         ack_type = struct.unpack("I", ack_type_header)[0]
         if ack_type == ACK:
-            print("ACK received")
+            print("ACK를 받았습니다.")
         else:
-            print("ACK reception failed")
+            print("오류: 예상치 않은 ACK 유형입니다.")
+
 
 
     def send_data_type(self, data_type):
@@ -73,6 +73,46 @@ class TcpClient:
 
     def close_connection(self):
         self.client_socket.close()
+        
+    
+
+    def receive_image_from_server(self, save_path="received_image.jpg"):
+        try:
+            # 데이터 형식 식별자 및 이미지 파일의 크기 수신
+            data_type_header = self.client_socket.recv(4)
+            image_size_header = self.client_socket.recv(4)
+            print("image_size_header:", image_size_header)
+            # 데이터 형식 식별자 확인
+            data_type = struct.unpack("I", data_type_header)[0]
+            if data_type == 3:  # 이미지 데이터 수신 시작
+                image_size = struct.unpack("I", image_size_header)[0]
+                print("Image size:", image_size)
+                #self.client_socket.recv(4)  # 4바이트 데이터 읽어오기만 하고 사용하지 않음
+                # 이미지 데이터 수신 및 저장
+                received_data = image_size_header
+                remaining_size = image_size
+                while remaining_size > 0:
+                    data = self.client_socket.recv(min(1024, remaining_size))
+                    if not data:
+                        break
+                    received_data += data
+                    remaining_size -= len(data)
+                #print(received_data)
+                with open(save_path, "wb") as image_file:
+                    image_file.write(received_data)
+
+                print("Image received and saved")
+                # 받았다는 신호가 필요함.. flag 필요
+                
+            else:
+                print("Error: Image header does not contain '3'")
+
+        except Exception as e:
+            print(f"Error: {e}")
+
+
+
+
 
 def receive_uid_and_send_image():
     # Arduino에서 UID 수신 및 서버로 전송
@@ -102,18 +142,21 @@ def receive_uid_and_send_image():
                     
                     tcp_client.client_socket.sendall(Log.encode("utf-8"))
                     print("Log를 서버로 보냈습니다.")
-                    tcp_client.wait_for_ACK()
+                    #tcp_client.wait_for_ACK()
                     
                     
                     
                     tcp_client.send_data_type(0)  # image
                     tcp_client.send_image("gcc_version.png")# 이미지를 서버로 송신
-                    tcp_client.wait_for_ACK()
-                    time.sleep(1)
+                    # tcp_client.wait_for_ACK()
+                    tcp_client.close_connection()
+                    #time.sleep(1)
                     
+                    tcp_client.connect_to_server()
+                    tcp_client.receive_image_from_server() # 서버로부터 이미지를 수신
+                    #ACK 송신
+                    tcp_client.close_connection()
 
-                    # 대기: 이미지 전송이 시작됨을 확인
-                    #tcp_client.receive_data_type()
 
                 except Exception as e:
                     print(f"통신 오류: {e}")
@@ -126,4 +169,3 @@ def receive_uid_and_send_image():
 
 if __name__ == "__main__":
     receive_uid_and_send_image()
-
