@@ -8,17 +8,16 @@ MFRC522 mfrc522(SDA_PIN, RST_PIN);
 
 void setup() {
   Serial.begin(9600);
-  while (!Serial);
+  while (!Serial);// serial 연결 될때까지 대기
   SPI.begin();
   mfrc522.PCD_Init();
-  Serial.println("RFID-RC522 및 라즈베리파이 통신 예제");
 }
 
-void loop() {
+void loop() {//무한루프
   // RFID 모듈에서 카드 감지
   if (mfrc522.PICC_IsNewCardPresent() && mfrc522.PICC_ReadCardSerial()) {
-    Serial.print("카드 UID: ");
-    printCardUID();
+    //Serial.print("카드 UID: ");//디버그용
+    //printCardUID();//디버그용
 
     // RFID UID를 라즈베리파이로 전송
     sendUIDtoRaspberryPi();

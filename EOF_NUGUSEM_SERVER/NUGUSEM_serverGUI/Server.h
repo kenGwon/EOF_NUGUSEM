@@ -18,6 +18,7 @@ enum DataType {
     STRING = 1,
     IMAGE_SEND =2,
     IMAGE_SIZE=3,
+    AUTH_LOG=4,
     ACK = 9, 
 };
 

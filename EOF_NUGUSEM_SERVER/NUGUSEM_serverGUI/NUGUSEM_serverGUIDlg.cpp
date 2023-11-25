@@ -258,19 +258,25 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		{ 
 			set_img_path(img_path);
 		}
-
-
-
-
-
-
 		// Log String 수신 상황
 		log.insert(0, "uid: "+uid + " ");
-		log += "출입시도";  //나중에 flag 하나 더 줘서 라즈베리파이 측에서 출입완료 올때 로그랑 분리해줘야됨
 		log += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(log.c_str());
+
+		m_socketDataAvailable = true;
+		m_condition.notify_one();
+	}
+	else if (server.get_Rflag() == 4)//AUTH_LOG 수신
+	{
+		CString log = str ;
+		std::cout << "log: " << log << std::endl;
+		log += "\r\n";
+
+		int nLength = m_controlLog.GetWindowTextLength();
+		m_controlLog.SetSel(nLength, nLength);
+		m_controlLog.ReplaceSel(log);
 
 		m_socketDataAvailable = true;
 		m_condition.notify_one();
