@@ -10,6 +10,7 @@ from PyQt5.QtWidgets import *
 import client
 import face_detector
 
+serial_instance = serial.Serial('/dev/ttyACM0', 9600)
 client_instance = client.ClientCommunication("10.10.15.58", 8888)
 face_detector_instance = face_detector.FaceDetector()
 
@@ -82,14 +83,22 @@ class WebcamThread(QThread):
                             self.update_information.emit(self.information)
                             print("동일인") 
                             
+                            # 서보모터 문 열기
+                            command = "A180\n" # ex: A180\n
+                            serial_instance.write(command.encode())
+
                             name = self.label_name[str(ci_id_)] #ID를 이용하여 이름 가져오기
                             client_instance.authentication_log = name + " Enter Complete!!!"
                             client_instance.authentication_flag = True
-                            
+                            client_instance.Manager_flag=True
                         else:
                             self.information = "인증실패! 입장 불가능합니다!"
                             self.update_information.emit(self.information)
                             print("다른 사람")
+
+                            # 서보모터 문 닫기
+                            command = "A0\n" # ex: A0\n
+                            serial_instance.write(command.encode())
 
                             client_instance.authentication_log = "Enter Fail..."
                             client_instance.authentication_flag = True
@@ -127,26 +136,43 @@ class CommThread(QThread):
         client_instance.communicate()
 
 
-class RFIDreadingThread(QThread):
+class ArduinoThread(QThread):
     global client_instance
 
+    
     def __init__(self, serial_port):
         super().__init__()
-        self.ser = serial.Serial('/dev/ttyACM0', 9600)
         print("RFID 스레드 생성완료")
+        # self.ser = serial.Serial('/dev/ttyACM0', 9600)
 
+    """
     def __del__(self, serial_port):
         self.ser.close()
+    
+    def set_servo_angle(self,angle):
+        command = f'A{client_instance.angle}\n' # ex: A180\n
+        serial_instance.write(command.encode())
+    def open_servo_motor(self):
+        set_servo_angle(180)
+    def close_servo_motor(self):
+        set_servo_angle(0)
 
+    """
+        
     def run(self):
         print("RFID 스레드 동작시작")
         while True:    
-            data = self.ser.readline().decode('utf-8').strip()
+            data = serial_instance.readline().decode('utf-8').strip()
             print("RFID 1회 읽기")
             if data and data.startswith("U"):
                 uid_ = data[1:]  # 헤더 "U"를 제외한 부분이 UID
                 client_instance.uid = uid_
                 client_instance.arduino_rfid_flag = True
+            
+            # if client_instance.Manager_flag:
+            #     self.set_servo_angle(client_instance.angle)
+            #     client_instance.Manager_flag=False
+            #     #servo motor to arduino
 
 
 class App(QMainWindow):
@@ -162,7 +188,7 @@ class App(QMainWindow):
 
         # 3초에 한번씩 Edit Control 초기화
         self.timer = QTimer(self)
-        self.timer.start(3000)
+        self.timer.start(4000)
         self.timer.timeout.connect(self.refresh_edit1)
 
         self.initUI()
@@ -203,8 +229,8 @@ class App(QMainWindow):
         self.comm_thread.start()
 
         # 아두이노 시리얼 통신 스레드 생성
-        self.rfid_thread = RFIDreadingThread(self.serial_port)
-        self.rfid_thread.start()
+        self.arduino_thread = ArduinoThread(self.serial_port)
+        self.arduino_thread.start()
         
         # 각종 정보 출력 라인 에디트 생성
         self.edit1 = QLineEdit(self)
@@ -243,11 +269,11 @@ class App(QMainWindow):
         if information == "인증완료. 입장 가능합니다.":
             self.edit1.setStyleSheet("background-color : green")
             self.edit1.setText(information)
-            self.timer.start(3000)
+            self.timer.start(4000)
         elif information == "인증실패! 입장 불가능합니다!":
             self.edit1.setStyleSheet("background-color : red")
             self.edit1.setText(information)
-            self.timer.start(3000)
+            self.timer.start(4000)
 
     # 주기적으로 정보창 초기화
     def refresh_edit1(self):

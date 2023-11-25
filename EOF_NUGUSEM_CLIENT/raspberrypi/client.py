@@ -15,6 +15,8 @@ class ClientCommunication:
         self.arduino_rfid_flag = False
         self.authentication_flag = False
         self.authentication_log = ""
+        self.angle=0
+        self.Manager_flag=False
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -100,6 +102,10 @@ class ClientCommunication:
         finally:
             pass
 
+        
+    def receive_manager_command(self):
+        # receive_data_type()
+        self.Manager_flag=True
 
     def communicate(self):
         try:
