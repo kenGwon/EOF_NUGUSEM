@@ -1,5 +1,6 @@
 import cv2
 import time
+import serial
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -70,19 +71,19 @@ class WebcamThread(QThread):
                         ci_id_confidence = int(100*(1-(ci_id_)/300))
 
                         if ci_id_ == ri_id_ and \
-                            ri_id_confidence > 75 and ci_id_confidence > 75:
-                            print("동일인") 
+                            ri_id_confidence > 75 and \
+                                  ci_id_confidence > 75:
                             self.information = "인증완료. 입장 가능합니다."
                             self.update_information.emit(self.information)
+                            print("동일인") 
                             
+                            client_instance.authentication_flag = True
                             # 여기에 로그 재전송 로직 추가
-
                         else:
-                            print("다른 사람")
                             self.information = "인증실패! 입장 불가능합니다!"
                             self.update_information.emit(self.information)
+                            print("다른 사람")
 
-                            # 여기에 로그 재전송 로직 추가
 
                         #################################################################################
                 
@@ -115,6 +116,28 @@ class CommThread(QThread):
 
     def run(self):
         client_instance.communicate()
+
+
+class RFIDreadingThread(QThread):
+    global client_instance
+
+    def __init__(self, serial_port):
+        super().__init__()
+        self.ser = serial.Serial('/dev/ttyACM0', 9600)
+        print("RFID 스레드 생성완료")
+
+    def __del__(self, serial_port):
+        self.ser.close()
+
+    def run(self):
+        print("RFID 스레드 동작시작")
+        while True:    
+            data = self.ser.readline().decode('utf-8').strip()
+            print("RFID 1회 읽기")
+            if data and data.startswith("U"):
+                uid_ = data[1:]  # 헤더 "U"를 제외한 부분이 UID
+                client_instance.uid = uid_
+                client_instance.arduino_rfid_flag = True
 
 
 class App(QMainWindow):
@@ -165,11 +188,14 @@ class App(QMainWindow):
         self.webcam_thread.update_information.connect(self.print_info_to_edit1) # 라인 에디트 시그널 슬롯 연결
         self.webcam_thread.start()
 
-        # 아두이노 시리얼 통신 스레드 생성
+        # TCP IP 통신 스레드 생성
         self.comm_thread = CommThread(self.serial_port)
         self.comm_thread.data_received_signal.connect(self.update_data)
         self.comm_thread.start()
 
+        # 아두이노 시리얼 통신 스레드 생성
+        self.rfid_thread = RFIDreadingThread(self.serial_port)
+        self.rfid_thread.start()
         
         # 각종 정보 출력 라인 에디트 생성
         self.edit1 = QLineEdit(self)
@@ -183,7 +209,7 @@ class App(QMainWindow):
         # 관리실 문 열기 요청 버튼 생성
         btn3 = QPushButton("관리실 인증 요청")
         layout.addWidget(btn3)
-        # btn3.clicked.connect(self.함수명)
+        # btn3.clicked.connect(self.연결할함수명)
 
 
     # 웹캠 동영상 프레임 갱신 슬롯

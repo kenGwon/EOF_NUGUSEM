@@ -8,10 +8,12 @@ class ClientCommunication:
     def __init__(self, server_ip, port):
         self.server_ip = server_ip
         self.port = port
+        self.uid = ""
         self.client_socket = None
         self.rfid_tag_flag = False
         self.img_rcv_flag = False
-        
+        self.authentication_flag = False
+        self.arduino_rfid_flag=False
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -85,7 +87,7 @@ class ClientCommunication:
                         break
                     received_data += data
                     remaining_size -= len(data)
-                #print(received_data)
+                print(received_data)#
                 with open(save_path, "wb") as image_file:
                     image_file.write(received_data)
 
@@ -99,16 +101,28 @@ class ClientCommunication:
 
 
     def communicate(self):
-        # Arduino에서 UID 수신 및 서버로 전송
-        ser = serial.Serial('/dev/ttyACM0', 9600)
-
         try:
             while True:
-                data = ser.readline().decode('utf-8').strip()
-                if data and data.startswith("U"):
-                    uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
-                    print("받은 UID:", uid)
-                    self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함 ### 의심                    
+                               
+                # # 인증 완료후 로그 재전송 로직
+                # if self.authentication_flag:
+                #     try:
+                #         # 여기에 로그 재전송 로직 추가 MFC에도 플래그 추가 해야하려나 @kenGwon
+                #         print("# 여기에 로그 재전송 로직 추가 MFC에도 플래그 추가 해야하려나 @kenGwon")
+                        
+                #     except Exception as e:
+                #         print(f"통신 오류: {e}")
+                #     finally:
+                #         # self.close_connection()
+                #         self.authentication_flag = False
+                #         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+               
+                
+                # 아두이노에서 RFID가 읽힌 경우, 로그 및 이미지 전송 처리 로직
+                if self.arduino_rfid_flag:
+                    
+                    print("받은 UID:", self.uid)
+                    self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함                  
 
                     try:
                         # 송신용 소켓 오픈
@@ -116,7 +130,7 @@ class ClientCommunication:
                         
                         self.send_data_type(1) # string
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        send_data = uid + "@" + log
+                        send_data = self.uid + "@" + log
                         self.client_socket.sendall(send_data.encode("utf-8"))
                         print("UID + Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()
@@ -138,11 +152,14 @@ class ClientCommunication:
                     finally:
                         self.close_connection()
                         self.img_rcv_flag = True # 플래그 처리는 여기 있어야 함
+                        self.arduino_rfid_flag = False
+                
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
         finally:
-            ser.close()
+            pass
+            
 
     """
     def wait_for_ACK(self):

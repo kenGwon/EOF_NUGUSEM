@@ -24,7 +24,7 @@ class FaceDetector():
         for (x, y, width, height) in face_area_info:
             roi_gray = gray[y:y+height, x:x+width]
             id_, conf = self.model.predict(roi_gray)
-            print(id_, conf)
+            #print(id_, conf)
             try:
                 if conf < 500:
                     confidence = int(100*(1-(conf)/300))
