@@ -19,6 +19,21 @@ Server::Server() {
     listen(serverSocket, 5);
     std::cout << "Server listening on port " << PORT << "..." << std::endl;
 }
+Server::Server(const int _port) {
+
+    WSAStartup(MAKEWORD(2, 2), &wsaData);
+
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    serverAddr.sin_port = htons(_port);
+
+    bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
+    listen(serverSocket, 5);
+    std::cout << "Server listening on port " << _port << "..." << std::endl;
+}
+
 
 Server::~Server() {
     closesocket(serverSocket);
@@ -74,7 +89,20 @@ void Server::set_Rflag(int Rflag) {
 int Server::get_Rflag() {
     return this->Rflag;
 }
+void Server::set_Manager_Req_flag(int Manager_Req_flag) {
+    this->Manager_Req_flag = Manager_Req_flag;
+}
 
+int Server::get_Manager_Req_flag() {
+    return this->Manager_Req_flag;
+}
+void Server::set_Manager_com_flag(int Manager_com_flag) {
+    this->Manager_com_flag = Manager_com_flag;
+}
+
+int Server::get_Manager_com_flag() {
+    return this->Manager_com_flag;
+}
 
 
 
@@ -245,4 +273,83 @@ void Server::handleImageTransmissionCompleteMessage() {
 void Server::sendAck(SOCKET clientSocket) {
     DataType ackType = ACK;//9를 보내주는거임.
     send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+void Server::run_manager() {
+
+    SOCKET clientSocket=NULL;
+    if (Manager_Req_flag == 0)//평소 상태 계속 listening
+    {
+        sockaddr_in clientAddr;
+        int clientAddrLen = sizeof(clientAddr);
+        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        char buffer[sizeof(ManagerDataType)];
+        int bytesReceived = recv(clientSocket, buffer, sizeof(ManagerDataType), 0);
+
+        if (bytesReceived == sizeof(ManagerDataType)) {
+            ManagerDataType receivedType = *reinterpret_cast<ManagerDataType*>(buffer);
+
+            if (receivedType == REQUEST) {
+                Manager_Req_flag = 1;
+                // flag 세팅으로 메시지 박스 pop up
+                std::cout << "Manager REQUEST" << std::endl;
+
+            }
+        }
+        else if (bytesReceived == 0) {
+            // 클라이언트가 연결을 종료한 경우
+            std::cout << "Client disconnected." << std::endl;
+        }
+        else {
+            // 오류 또는 예상치 못한 상황 처리
+            std::cerr << "Error receiving data from manager: " << WSAGetLastError() << std::endl;
+        }
+    }
+    else if (Manager_Req_flag == 2) {
+        std::cout << "Manager_Req_flag == 2" << std::endl;
+        sockaddr_in clientAddr;
+        int clientAddrLen = sizeof(clientAddr);
+        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        if (clientSocket != NULL)
+        {
+            send_comm_manager(clientSocket);
+        }
+        Manager_Req_flag = 0;
+    }
+}
+
+void Server::send_comm_manager(SOCKET clientSocket) {
+
+    // flag 제어가 들어오면 msg 박스에서 Y->setflag=1 N->setflag=0
+    std::cout << "send_comm_manager" << std::endl;
+
+    if (Manager_com_flag==1)//server 클래스에 만들어서 메시지 박스 버튼에 setflag를 넣던지
+    {
+        std::cout << "Manager_com_flag1111111111" << std::endl;
+        ManagerDataType managerDataType = OPEN;//1
+        send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
+        std::cout << "Door OPEN" << std::endl;
+        Manager_com_flag = -1;
+    }
+    else if(Manager_com_flag == 0)
+    {
+        std::cout << "Manager_com_flag000000000" << std::endl;
+        ManagerDataType managerDataType = CLOSE;//2
+        std::cout << "Manager_com_flag0000111111" << std::endl;
+        send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
+        std::cout << "Door CLOSE" << std::endl;
+        Manager_com_flag = -1;
+    }
 }

@@ -25,17 +25,35 @@ UINT ThreadForListening(LPVOID param)
 	while (pMain->get_m_flagListenClientThread())
 	{
 		Sleep(3000);
-
 		// 비동기 소켓 통신 함수 호출
+		printf("1111111");
 		pMain->ListenClientAsync();
 		
 		//메인 쓰레드 에서 소켓 통신 함수 호출
 		//PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
-
 	}
-
 	return 0;
 }
+
+//tcpip 관리자 호출 버튼 입력 시 전송되는 메시지를 수신대기
+UINT ListeningForManager(LPVOID param)
+{
+	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
+	while (pMain->get_m_flagListenClientThread())
+	{
+		Sleep(3000);
+		// 비동기 소켓 통신 함수 호출
+		printf("2222222");
+		pMain->ListenClientAsync_Manager();
+
+		//메인 쓰레드 에서 소켓 통신 함수 호출
+		//PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
+	}
+	return 0;
+}
+
+
+
 
 // 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
@@ -97,6 +115,11 @@ BEGIN_MESSAGE_MAP(CNUGUSEMserverGUIDlg, CDialogEx)
 END_MESSAGE_MAP()
 
 
+
+
+
+
+
 // CNUGUSEMserverGUIDlg 메시지 처리기
 
 BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
@@ -133,7 +156,7 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	m_flagListenClientThread = TRUE;
 	m_socketDataAvailable = false;
 	m_pThread = AfxBeginThread(ThreadForListening, this);
-
+	m_mThread/*manager thread*/ = AfxBeginThread(ListeningForManager, this);//
 
 
 
@@ -223,7 +246,7 @@ void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 // 비동기 소켓 통신 함수 정의
 void CNUGUSEMserverGUIDlg::ListenClientAsync()
 {
-//	std::unique_lock<std::mutex> lock(m_socketMutex);
+	//	std::unique_lock<std::mutex> lock(m_socketMutex);
 
 	CString str;
 	server.run(str);
@@ -234,32 +257,32 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		ScreenToClient(m_cam_face_rect);
 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
-		
+
 		m_socketDataAvailable = true;
 		m_condition.notify_one();
 
 		server.sendImageToClient(/*"received_image.png"*/get_img_path());
-		
+
 		server.set_Rflag(-1);
 	}
 	else if (server.get_Rflag() == 1) {
 
 		std::string input = std::string(CT2CA(str));
-		int pos=0;
+		int pos = 0;
 		std::string uid = input.substr(0, input.find("@", 0));
 		std::string log = input.substr(input.find("@", 0) + 1, input.length());
-		
+
 		std::cout << "uid: " << uid << std::endl;
 		std::cout << "log: " << log << std::endl;
 
 		//수신받은 UID로 DB에서 image path select
 		CString img_path;
 		if (DB.get_img_path(uid.c_str(), img_path))
-		{ 
+		{
 			set_img_path(img_path);
 		}
 		// Log String 수신 상황
-		log.insert(0, "uid: "+uid + " ");
+		log.insert(0, "uid: " + uid + " ");
 		log += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
@@ -270,7 +293,7 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 	}
 	else if (server.get_Rflag() == 4)//AUTH_LOG 수신
 	{
-		CString log = str ;
+		CString log = str;
 		std::cout << "log: " << log << std::endl;
 		log += "\r\n";
 
@@ -286,6 +309,40 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 }
 
 
+
+
+// 비동기 소켓 통신 함수 정의
+void CNUGUSEMserverGUIDlg::ListenClientAsync_Manager()
+{
+	//	std::unique_lock<std::mutex> lock(m_socketMutex);
+	manager_server.run_manager();
+
+	if (manager_server.get_Manager_Req_flag()==1)
+	{
+		//manager_server.set_Manager_Req_flag(0);
+		UINT result = AfxMessageBox(_T("Yes 또는 No 중 하나를 선택하세요."), MB_YESNO | MB_ICONQUESTION);
+
+		if (result == IDYES) {
+			// 사용자가 Yes를 선택한 경우에 수행할 작업
+			MessageBox(_T("출입문을 열겠습니다."));
+			manager_server.set_Manager_com_flag(1);
+			manager_server.set_Manager_Req_flag(2);
+			// 여기에 Yes를 선택했을 때 실행할 코드 추가
+		}
+		else if (result == IDNO) {
+			// 사용자가 No를 선택한 경우에 수행할 작업
+			MessageBox(_T("출입문을 닫겠습니다."));
+			manager_server.set_Manager_com_flag(0);
+			manager_server.set_Manager_Req_flag(2);
+			// 여기에 No를 선택했을 때 실행할 코드 추가
+		}
+	}
+}
+
+
+
+
+
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
 	return this->m_flagListenClientThread;
@@ -295,7 +352,7 @@ BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
   desc: img_path를 바탕으로 이미지를 로드하여 Picture Control에 출력한다.
   param: 이미지 경로
 */
-void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, CRect& image_rect)
+void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage & image_instance, CRect & image_rect)
 {
 	image_instance.~CImage();
 	image_instance.Load(img_path);
