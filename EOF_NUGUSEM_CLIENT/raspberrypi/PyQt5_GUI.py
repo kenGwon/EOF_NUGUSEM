@@ -10,9 +10,12 @@ from PyQt5.QtWidgets import *
 import client
 import face_detector
 
+# 전역 인스턴스
 serial_instance = serial.Serial('/dev/ttyACM0', 9600)
 client_instance = client.ClientCommunication("10.10.15.58", 8888)
+client_instance_temp = client.ClientCommunication("10.10.15.58", 8889) # 포트 다름. 8889임.
 face_detector_instance = face_detector.FaceDetector()
+
 
 class WebcamThread(QThread):
     global client_instance
@@ -136,6 +139,37 @@ class CommThread(QThread):
         client_instance.communicate()
 
 
+class ManagerCommThread(QThread):
+    global client_instance_temp
+    data_received_signal = pyqtSignal(str)
+    
+    def __init__(self, serial_port):
+        super().__init__()
+        self.request_flag = 0
+        print("관리자 통신 스레드 생성")
+
+
+    def run(self):
+        while True:
+            if self.request_flag == 1:
+                print("클릭 한번으로 여기까지 들어오긴 함")
+                client_instance_temp.send_communicate_manager()
+                self.request_flag = 2
+
+            elif self.request_flag == 2:
+                client_instance_temp.receive_communicate_manager()
+                if client_instance_temp.Manager_flag == True:
+                    self.request_flag = 0
+                    client_instance_temp.Manager_flag = False
+            else:
+                pass
+                
+                
+
+    def request(self):
+        self.request_flag = 1
+
+
 class ArduinoThread(QThread):
     global client_instance
 
@@ -168,7 +202,24 @@ class ArduinoThread(QThread):
                 uid_ = data[1:]  # 헤더 "U"를 제외한 부분이 UID
                 client_instance.uid = uid_
                 client_instance.arduino_rfid_flag = True
-            
+
+
+
+
+            if client_instance_temp.arduino_servo_flag==1:
+                # 서보모터 문 열기
+                command = "A180\n" # ex: A180\n
+                serial_instance.write(command.encode())
+                client_instance_temp.arduino_servo_flag=0
+            elif client_instance_temp.arduino_servo_flag==2 :
+                # 서보모터 문 열기
+                command = "A0\n" # ex: A180\n
+                serial_instance.write(command.encode())
+                client_instance_temp.arduino_servo_flag=0
+            else :
+                pass
+
+
             # if client_instance.Manager_flag:
             #     self.set_servo_angle(client_instance.angle)
             #     client_instance.Manager_flag=False
@@ -228,6 +279,11 @@ class App(QMainWindow):
         self.comm_thread.data_received_signal.connect(self.update_data)
         self.comm_thread.start()
 
+        # 관리실 통신 스레드 생성
+        self.manager_comm_thread = ManagerCommThread(self.serial_port)
+        # self.manager_comm_thread.data_received_signal.connect(self.update_data)
+        self.manager_comm_thread.start()
+
         # 아두이노 시리얼 통신 스레드 생성
         self.arduino_thread = ArduinoThread(self.serial_port)
         self.arduino_thread.start()
@@ -244,7 +300,7 @@ class App(QMainWindow):
         # 관리실 문 열기 요청 버튼 생성
         btn3 = QPushButton("관리실 인증 요청")
         layout.addWidget(btn3)
-        # btn3.clicked.connect(self.연결할함수명)
+        btn3.clicked.connect(self.manager_request)
 
 
     # 웹캠 동영상 프레임 갱신 슬롯
@@ -262,6 +318,11 @@ class App(QMainWindow):
     # 웹캠 정지 슬롯
     def pause(self):
         self.webcam_thread.pause()
+
+    
+    def manager_request(self):
+        self.manager_comm_thread.request()
+
 
     # 각종 정보 출력 슬롯
     @pyqtSlot(str)
