@@ -16,7 +16,7 @@ class WebcamThread(QThread):
 
     def __init__(self, serial_port): 
         super().__init__()
-        self.running = True
+        self.running = False
         self.information = ""
 
     def run(self):
@@ -26,8 +26,7 @@ class WebcamThread(QThread):
             ret, frame = cap.read()
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_image = face_detector_instance.verify_face(rgb_image) #########
-                # 박스가 적용된 이미지
+                rgb_image = face_detector_instance.verify_face(rgb_image)
 
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
@@ -67,30 +66,45 @@ class WebcamThread(QThread):
                         ##################### 다양한 플로우 다루기 위한 조건 추가 될 부분 #####################
                         print(f"ri_id_: {ri_id_}")
                         print(f"ci_id_: {ci_id_}")
+                        ri_id_confidence = int(100*(1-(ri_id_)/300))
+                        ci_id_confidence = int(100*(1-(ci_id_)/300))
 
-                        if ci_id_ == ri_id_:
+                        if ci_id_ == ri_id_ and \
+                            ri_id_confidence > 75 and ci_id_confidence > 75:
                             print("동일인") 
                             self.information = "인증완료. 입장 가능합니다."
                             self.update_information.emit(self.information)
                             
+                            # 여기에 로그 재전송 로직 추가
 
                         else:
                             print("다른 사람")
                             self.information = "인증실패! 입장 불가능합니다!"
                             self.update_information.emit(self.information)
 
+                            # 여기에 로그 재전송 로직 추가
+
                         #################################################################################
                 
                         client_instance.img_rcv_flag = False
                         client_instance.rfid_tag_flag = False
 
-        cap.release() # 나중에 카메라 on / off 기능이 추가될 경우, 위 while True가 깨지면서 진입 가능해짐.
+        cap.release() 
+        # 웹캠 정지 상태에는 IDLE이미지 출력
+        idle_frame = cv2.imread("resources/idle_frame.png")
+        idle_frame = cv2.cvtColor(idle_frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = idle_frame.shape
+        bytes_per_line = ch * w
+        convert_to_qt_format = QImage(idle_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        p = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
+        self.change_pixmap_signal.emit(p)
 
     def resume(self):
         self.running = True
 
     def pause(self):
         self.running = False
+
 
 class CommThread(QThread):
     global client_instance
@@ -187,14 +201,6 @@ class App(QMainWindow):
     # 웹캠 정지 슬롯
     def pause(self):
         self.webcam_thread.pause()
-        
-        idle_frame = cv2.imread("resources/idle_frame.png")
-        idle_frame = cv2.cvtColor(idle_frame, cv2.COLOR_BGR2RGB)
-        h, w, ch = idle_frame.shape
-        bytes_per_line = ch * w
-        convert_to_qt_format = QImage(idle_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
-        p = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
-        self.update_image(p)
 
     # 각종 정보 출력 슬롯
     @pyqtSlot(str)
