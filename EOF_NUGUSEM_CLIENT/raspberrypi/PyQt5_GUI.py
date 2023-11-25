@@ -35,7 +35,6 @@ class WebcamThread(QThread):
                 p = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(p)
                 
-
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 face_area_info = face_detector_instance.face_classifier.detectMultiScale(gray_image, scaleFactor=1.5, minNeighbors=5)
                 
@@ -73,6 +72,8 @@ class WebcamThread(QThread):
                             print("동일인") 
                             self.information = "인증완료. 입장 가능합니다."
                             self.update_information.emit(self.information)
+                            
+
                         else:
                             print("다른 사람")
                             self.information = "인증실패! 입장 불가능합니다!"
@@ -117,7 +118,6 @@ class App(QMainWindow):
         self.timer = QTimer(self)
         self.timer.start(3000)
         self.timer.timeout.connect(self.refresh_edit1)
-
 
         self.initUI()
 
@@ -187,6 +187,14 @@ class App(QMainWindow):
     # 웹캠 정지 슬롯
     def pause(self):
         self.webcam_thread.pause()
+        
+        idle_frame = cv2.imread("resources/idle_frame.png")
+        idle_frame = cv2.cvtColor(idle_frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = idle_frame.shape
+        bytes_per_line = ch * w
+        convert_to_qt_format = QImage(idle_frame.data, w, h, bytes_per_line, QImage.Format_RGB888)
+        p = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
+        self.update_image(p)
 
     # 각종 정보 출력 슬롯
     @pyqtSlot(str)
