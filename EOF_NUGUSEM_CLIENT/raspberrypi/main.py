@@ -1,5 +1,6 @@
 import sys
 import cv2
+import time
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QVBoxLayout, QWidget
@@ -47,9 +48,8 @@ class WebcamThread(QThread):
 
                 if client_instance.rfid_tag_flag:
                     image_filename = "resources/captured_image.png"
-                    cv2.imwrite(image_filename, frame) # client.py 130번재 라인이 참조하는 실제파일 저장 타이밍
-                    client_instance.rfid_tag_flag = False
-
+                    cv2.imwrite(image_filename, frame) # client.py 127번재 라인이 참조하는 실제파일 저장 타이밍
+                    time.sleep(0.25)
 
                     if client_instance.img_rcv_flag:                    
                         captured_image_path = "resources/face_on_captured_image.jpg"
@@ -72,7 +72,8 @@ class WebcamThread(QThread):
 
                         #################################################################################
                 
-                        client_instance.img_rcv_flag = False 
+                        client_instance.img_rcv_flag = False
+                        client_instance.rfid_tag_flag = False
 
         cap.release() # 나중에 카메라 on / off 기능이 추가될 경우, 위 while True가 깨지면서 진입 가능해짐.
 

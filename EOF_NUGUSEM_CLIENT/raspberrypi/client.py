@@ -108,8 +108,7 @@ class ClientCommunication:
                 if data and data.startswith("U"):
                     uid = data[1:]  # 헤더 "U"를 제외한 부분이 UID
                     print("받은 UID:", uid)
-
-                    
+                    self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함 ### 의심                    
 
                     try:
                         # 송신용 소켓 오픈
@@ -121,7 +120,7 @@ class ClientCommunication:
                         self.client_socket.sendall(send_data.encode("utf-8"))
                         print("UID + Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()
-                        time.sleep(0.5)  
+                        time.sleep(0.25)  
                                                
                         self.send_data_type(0) # image binary
                         self.send_image_to_server("resources/captured_image.png")
@@ -139,7 +138,6 @@ class ClientCommunication:
                     finally:
                         self.close_connection()
                         self.img_rcv_flag = True # 플래그 처리는 여기 있어야 함
-                        self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함 ### 의심
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
