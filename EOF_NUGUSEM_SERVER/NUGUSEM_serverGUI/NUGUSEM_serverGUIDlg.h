@@ -44,7 +44,7 @@ private:
 	CEdit m_controlLog;
 	CString m_strLog;
 	CWinThread* m_pThread;
-
+	CWinThread* m_mThread;/*manager thread*/
 	// 비동기 소켓 통신을 위한 변수 및 함수 추가
 	std::mutex m_socketMutex;
 	std::condition_variable m_condition;
@@ -62,10 +62,12 @@ public:
 	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
 	void set_img_path(CString img_path);
 	CString get_img_path();
-	Server server;
+	Server server = Server();
+	Server manager_server = Server(8889);
 	mariaDB DB;
 
 
 	// 비동기 소켓 통신을 위한 함수
 	void ListenClientAsync();
+	void ListenClientAsync_Manager();
 };
