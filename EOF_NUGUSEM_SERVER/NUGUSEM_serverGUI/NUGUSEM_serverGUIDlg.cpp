@@ -223,7 +223,7 @@ void CNUGUSEMserverGUIDlg::OnBnClickedClose()
 // 비동기 소켓 통신 함수 정의
 void CNUGUSEMserverGUIDlg::ListenClientAsync()
 {
-	std::unique_lock<std::mutex> lock(m_socketMutex);
+//	std::unique_lock<std::mutex> lock(m_socketMutex);
 
 	CString str;
 	server.run(str);
@@ -234,12 +234,13 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		ScreenToClient(m_cam_face_rect);
 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
-		server.set_Rflag(-1);
 		
-
 		m_socketDataAvailable = true;
 		m_condition.notify_one();
-		server.sendImageToClient(get_img_path());
+
+		server.sendImageToClient(/*"received_image.png"*/get_img_path());
+		
+		server.set_Rflag(-1);
 	}
 	else if (server.get_Rflag() == 1) {
 
@@ -257,17 +258,25 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		{ 
 			set_img_path(img_path);
 		}
-
-
-
-
-
-
 		// Log String 수신 상황
+		log.insert(0, "uid: "+uid + " ");
 		log += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(log.c_str());
+
+		m_socketDataAvailable = true;
+		m_condition.notify_one();
+	}
+	else if (server.get_Rflag() == 4)//AUTH_LOG 수신
+	{
+		CString log = str ;
+		std::cout << "log: " << log << std::endl;
+		log += "\r\n";
+
+		int nLength = m_controlLog.GetWindowTextLength();
+		m_controlLog.SetSel(nLength, nLength);
+		m_controlLog.ReplaceSel(log);
 
 		m_socketDataAvailable = true;
 		m_condition.notify_one();

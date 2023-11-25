@@ -14,8 +14,11 @@ constexpr int PORT = 8888;
 constexpr int BUFFER_SIZE = 1024;
 #define END_OF_IMAGE_MARKER 9
 enum DataType {
-    IMAGE = 0,
+    IMAGE_REC = 0,
     STRING = 1,
+    IMAGE_SEND =2,
+    IMAGE_SIZE=3,
+    AUTH_LOG=4,
     ACK = 9, 
 };
 

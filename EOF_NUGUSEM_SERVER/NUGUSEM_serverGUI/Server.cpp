@@ -38,19 +38,31 @@ void Server::run(CString& received_string) {
         closesocket(clientSocket);
     }
 
-    if (dataType == IMAGE) {
+    if (dataType == IMAGE_REC) //0
+    {
         receiveImage(clientSocket);
-        sendAck(clientSocket); // 이미지 수신 완료 후 ACK 전송
         set_Rflag(0);
+
+
         
     }
-    else if (dataType == STRING) {
-        //handleImageTransmissionCompleteMessage(); // 이미지 전송 완료 메시지 처리
+    else if (dataType == STRING)// 1 
+    {
         received_string = receiveString(clientSocket);
         set_Rflag(1);
-        sendAck(clientSocket); // 문자열 수신 완료 후 ACK 전송
 
     }
+    else if (dataType == AUTH_LOG)// 4
+    {
+        received_string = receiveString(clientSocket);
+        set_Rflag(4);
+    }
+
+
+
+
+
+
     else {
         std::cerr << "Unknown data type received" << std::endl;
         closesocket(clientSocket);
@@ -83,7 +95,7 @@ bool Server::isLastPacket(const char* buffer, int bytesRead) {
         return marker == END_OF_IMAGE_MARKER;
     }
 
-    return false; // 마지막 패킷이 아니라면 false 반환
+    return bytesRead == 0; // 마지막 패킷이 아니라면 false 반환
 }
 
 
@@ -122,7 +134,7 @@ CString Server::receiveString(SOCKET clientSocket) {
     }
 
     CStringA receivedString(stringBuffer);
-    set_Rflag(1);//1:string for log
+    //set_Rflag(1);//1:string for log
     return receivedString;
 }
 
@@ -132,7 +144,6 @@ void Server::sendImageToClient(CString image_Path) {
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
     SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-
     std::ifstream imageFile(image_Path, std::ios::binary);
 
     if (!imageFile.is_open()) {
@@ -140,6 +151,14 @@ void Server::sendImageToClient(CString image_Path) {
         closesocket(clientSocket);
         return;
     }
+
+    // 이미지 파일의 크기를 가져옴
+    std::ifstream imageFileSize(image_Path, std::ios::binary | std::ios::ate);
+    int imageSize = static_cast<int>(imageFileSize.tellg());
+    imageFileSize.close();
+
+    DataType img_size_Transmission = IMAGE_SIZE;//3
+    send(clientSocket, reinterpret_cast<char*>(&img_size_Transmission), sizeof(DataType), 0);
 
     char buffer[BUFFER_SIZE];
     int bytesRead;
@@ -155,15 +174,10 @@ void Server::sendImageToClient(CString image_Path) {
 
             std::cout << "Sent " << bytesSent << " bytes of image data to client" << std::endl;
         }
-
-        // 클라이언트에게 이미지 전송이 완료되었음을 알리는 메시지 전송
-        DataType endTransmission = STRING;
-        send(clientSocket, reinterpret_cast<char*>(&endTransmission), sizeof(DataType), 0);
     }
     catch (const std::exception& e) {
         std::cerr << "Error reading image file: " << e.what() << std::endl;
     }
-
     imageFile.close();
     std::cout << "Image sent to client" << std::endl;
     closesocket(clientSocket); // 이미지를 전송한 후에 소켓을 닫습니다.
@@ -171,7 +185,6 @@ void Server::sendImageToClient(CString image_Path) {
 }
 
 void Server::sendImageToClientAsync(CString image_Path) {
-    std::cout << "sendImageToClientAsync" << std::endl;
     // 이미지를 전송하는 스레드 생성
     std::thread([this, image_Path]() {
         // imagePathA는 이 스레드에서만 사용될 것이므로 복사본을 사용
