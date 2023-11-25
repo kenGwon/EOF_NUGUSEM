@@ -12,8 +12,9 @@ class ClientCommunication:
         self.client_socket = None
         self.rfid_tag_flag = False
         self.img_rcv_flag = False
+        self.arduino_rfid_flag = False
         self.authentication_flag = False
-        self.arduino_rfid_flag=False
+        self.authentication_log = ""
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -87,7 +88,7 @@ class ClientCommunication:
                         break
                     received_data += data
                     remaining_size -= len(data)
-                print(received_data)#
+                # print(received_data)#
                 with open(save_path, "wb") as image_file:
                     image_file.write(received_data)
 
@@ -104,18 +105,20 @@ class ClientCommunication:
         try:
             while True:
                                
-                # # 인증 완료후 로그 재전송 로직
-                # if self.authentication_flag:
-                #     try:
-                #         # 여기에 로그 재전송 로직 추가 MFC에도 플래그 추가 해야하려나 @kenGwon
-                #         print("# 여기에 로그 재전송 로직 추가 MFC에도 플래그 추가 해야하려나 @kenGwon")
+                # 인증 완료후 로그 재전송 로직
+                if self.authentication_flag:
+                    try:
+                        self.connect_to_server()
                         
-                #     except Exception as e:
-                #         print(f"통신 오류: {e}")
-                #     finally:
-                #         # self.close_connection()
-                #         self.authentication_flag = False
-                #         print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                        self.send_data_type(4) # string
+                        self.client_socket.sendall(self.authentication_log.encode("utf-8"))
+                        print("입장승인여부 로그를 서버로 보냈습니다.")
+                    except Exception as e:
+                        print(f"통신 오류: {e}")
+                    finally:
+                        self.close_connection()
+                        self.authentication_flag = False
+                        
                
                 
                 # 아두이노에서 RFID가 읽힌 경우, 로그 및 이미지 전송 처리 로직
@@ -130,7 +133,7 @@ class ClientCommunication:
                         
                         self.send_data_type(1) # string
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        send_data = self.uid + "@" + log
+                        send_data = self.uid + "@" + log + " try to enter"
                         self.client_socket.sendall(send_data.encode("utf-8"))
                         print("UID + Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()

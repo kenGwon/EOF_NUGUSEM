@@ -1,6 +1,9 @@
 import cv2
 import time
 import serial
+import json
+from os import getcwd
+from os.path import join
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -19,6 +22,8 @@ class WebcamThread(QThread):
         super().__init__()
         self.running = False
         self.information = ""
+        with open(join(getcwd(), "model/label_name.json"), 'r') as json_file:
+            self.label_name = json.load(json_file)
 
     def run(self):
         cap = cv2.VideoCapture(0)
@@ -77,13 +82,17 @@ class WebcamThread(QThread):
                             self.update_information.emit(self.information)
                             print("동일인") 
                             
+                            name = self.label_name[str(ci_id_)] #ID를 이용하여 이름 가져오기
+                            client_instance.authentication_log = name + " Enter Complete!!!"
                             client_instance.authentication_flag = True
-                            # 여기에 로그 재전송 로직 추가
+                            
                         else:
                             self.information = "인증실패! 입장 불가능합니다!"
                             self.update_information.emit(self.information)
                             print("다른 사람")
 
+                            client_instance.authentication_log = "Enter Fail..."
+                            client_instance.authentication_flag = True
 
                         #################################################################################
                 
