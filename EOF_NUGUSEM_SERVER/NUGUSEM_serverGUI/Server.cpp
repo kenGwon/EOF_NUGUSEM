@@ -58,11 +58,6 @@ void Server::run(CString& received_string) {
         set_Rflag(4);
     }
 
-
-
-
-
-
     else {
         std::cerr << "Unknown data type received" << std::endl;
         closesocket(clientSocket);
