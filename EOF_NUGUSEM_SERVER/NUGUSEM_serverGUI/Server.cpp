@@ -41,7 +41,6 @@ void Server::run(CString& received_string) {
     if (dataType == IMAGE_REC) //0
     {
         receiveImage(clientSocket);
-        //sendAck(clientSocket); // 이미지 수신 완료 후 ACK 전송
         set_Rflag(0);
 
 
@@ -49,12 +48,16 @@ void Server::run(CString& received_string) {
     }
     else if (dataType == STRING)// 1 
     {
-        //handleImageTransmissionCompleteMessage(); // 이미지 전송 완료 메시지 처리
         received_string = receiveString(clientSocket);
         set_Rflag(1);
-        //sendAck(clientSocket); // 문자열 수신 완료 후 ACK 전송
 
     }
+    else if (dataType == AUTH_LOG)// 4
+    {
+        received_string = receiveString(clientSocket);
+        set_Rflag(4);
+    }
+
     else {
         std::cerr << "Unknown data type received" << std::endl;
         closesocket(clientSocket);
@@ -126,7 +129,7 @@ CString Server::receiveString(SOCKET clientSocket) {
     }
 
     CStringA receivedString(stringBuffer);
-    set_Rflag(1);//1:string for log
+    //set_Rflag(1);//1:string for log
     return receivedString;
 }
 
