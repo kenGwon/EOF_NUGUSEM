@@ -1,5 +1,6 @@
 import cv2
 import time
+from datetime import datetime
 import serial
 import json
 from os import getcwd
@@ -76,8 +77,8 @@ class WebcamThread(QThread):
                         ##################### 다양한 플로우 다루기 위한 조건 추가 될 부분 #####################
                         print(f"ri_id_: {ri_id_}")
                         print(f"ci_id_: {ci_id_}")
-                        ri_id_confidence = int(100*(1-(ri_id_)/300))
-                        ci_id_confidence = int(100*(1-(ci_id_)/300))
+                        ri_id_confidence = int(100*(1-(ri_conf)/300))
+                        ci_id_confidence = int(100*(1-(ci_conf)/300))
 
                         if ci_id_ == ri_id_ and \
                             ri_id_confidence > 75 and \
@@ -91,7 +92,7 @@ class WebcamThread(QThread):
                             serial_instance.write(command.encode())
 
                             name = self.label_name[str(ci_id_)] #ID를 이용하여 이름 가져오기
-                            client_instance.authentication_log = name + " Enter Complete!!!"
+                            client_instance.authentication_log = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + name + " Enter Complete!!!"
                             client_instance.authentication_flag = True
                             client_instance.Manager_flag=True
                         else:
@@ -103,7 +104,7 @@ class WebcamThread(QThread):
                             command = "A0\n" # ex: A0\n
                             serial_instance.write(command.encode())
 
-                            client_instance.authentication_log = "Enter Fail..."
+                            client_instance.authentication_log = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " Reject trial..."
                             client_instance.authentication_flag = True
 
                         #################################################################################
@@ -141,11 +142,12 @@ class CommThread(QThread):
 
 class ManagerCommThread(QThread):
     global client_instance_temp
-    data_received_signal = pyqtSignal(str)
+    update_information = pyqtSignal(str)
     
     def __init__(self, serial_port):
         super().__init__()
         self.request_flag = 0
+        self.information = ""
         print("관리자 통신 스레드 생성")
 
 
@@ -159,8 +161,29 @@ class ManagerCommThread(QThread):
             elif self.request_flag == 2:
                 client_instance_temp.receive_communicate_manager()
                 if client_instance_temp.Manager_flag == True:
-                    self.request_flag = 0
-                    client_instance_temp.Manager_flag = False
+                    if client_instance_temp.arduino_servo_flag == 1:
+                        # 서보모터 문 열기
+                        command = "A180\n" # ex: A180\n
+                        serial_instance.write(command.encode())
+                        client_instance_temp.arduino_servo_flag = 0
+
+                        self.information = "관리자의 요청을 승인하여 문을 개방합니다!!!"
+                        self.update_information.emit(self.information)
+
+                    elif client_instance_temp.arduino_servo_flag == 2 :
+                        # 서보모터 문 열기
+                        command = "A0\n" # ex: A180\n
+                        serial_instance.write(command.encode())
+                        client_instance_temp.arduino_servo_flag = 0
+
+                        self.information = "관리자가 요청을 거부했습니다..."
+                        self.update_information.emit(self.information)
+
+                    else :
+                        pass
+
+                    self.request_flag = 0 # 플래그 초기화
+                    client_instance_temp.Manager_flag = False # 플래그 초기화
             else:
                 pass
                 
@@ -206,16 +229,16 @@ class ArduinoThread(QThread):
 
 
 
-            if client_instance_temp.arduino_servo_flag==1:
+            if client_instance_temp.arduino_servo_flag == 1:
                 # 서보모터 문 열기
                 command = "A180\n" # ex: A180\n
                 serial_instance.write(command.encode())
-                client_instance_temp.arduino_servo_flag=0
-            elif client_instance_temp.arduino_servo_flag==2 :
+                client_instance_temp.arduino_servo_flag = 0
+            elif client_instance_temp.arduino_servo_flag == 2:
                 # 서보모터 문 열기
                 command = "A0\n" # ex: A180\n
                 serial_instance.write(command.encode())
-                client_instance_temp.arduino_servo_flag=0
+                client_instance_temp.arduino_servo_flag = 0
             else :
                 pass
 
@@ -231,7 +254,7 @@ class App(QMainWindow):
         super().__init__()
 
         self.serial_port = serial_port
-        self.title = "EOF NUGU:SEM"
+        self.title = "EOF NUGU:SEM - Client"
         self.top = 100
         self.left = 100
         self.width = 640
@@ -281,7 +304,7 @@ class App(QMainWindow):
 
         # 관리실 통신 스레드 생성
         self.manager_comm_thread = ManagerCommThread(self.serial_port)
-        # self.manager_comm_thread.data_received_signal.connect(self.update_data)
+        self.manager_comm_thread.update_information.connect(self.print_manager_info_to_edit1)
         self.manager_comm_thread.start()
 
         # 아두이노 시리얼 통신 스레드 생성
@@ -322,6 +345,9 @@ class App(QMainWindow):
     
     def manager_request(self):
         self.manager_comm_thread.request()
+        self.edit1.setStyleSheet("background-color : orange")
+        self.edit1.setText("관리자 승인 대기중...")
+        self.timer.stop()
 
 
     # 각종 정보 출력 슬롯
@@ -335,6 +361,19 @@ class App(QMainWindow):
             self.edit1.setStyleSheet("background-color : red")
             self.edit1.setText(information)
             self.timer.start(4000)
+
+    # 각종 정보 출력 슬롯
+    @pyqtSlot(str)
+    def print_manager_info_to_edit1(self, information):
+        if information == "관리자의 요청을 승인하여 문을 개방합니다!!!":
+            self.edit1.setStyleSheet("background-color : green")
+            self.edit1.setText(information)
+            self.timer.start(4000)
+        elif information == "관리자가 요청을 거부했습니다...":
+            self.edit1.setStyleSheet("background-color : red")
+            self.edit1.setText(information)
+            self.timer.start(4000)
+
 
     # 주기적으로 정보창 초기화
     def refresh_edit1(self):
