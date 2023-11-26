@@ -24,9 +24,8 @@ UINT ThreadForListening(LPVOID param)
 
 	while (pMain->get_m_flagListenClientThread())
 	{
-		Sleep(3000);
+		Sleep(1000);
 		// 비동기 소켓 통신 함수 호출
-		printf("1111111");
 		pMain->ListenClientAsync();
 		
 		//메인 쓰레드 에서 소켓 통신 함수 호출
@@ -41,9 +40,8 @@ UINT ListeningForManager(LPVOID param)
 	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
 	while (pMain->get_m_flagListenClientThread())
 	{
-		Sleep(3000);
-		// 비동기 소켓 통신 함수 호출
-		printf("2222222");
+		Sleep(1000);
+		// 비동기 소켓 통신 함수 호출		
 		pMain->ListenClientAsync_Manager();
 
 		//메인 쓰레드 에서 소켓 통신 함수 호출
@@ -282,7 +280,7 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 			set_img_path(img_path);
 		}
 		// Log String 수신 상황
-		log.insert(0, "uid: " + uid + " ");
+		log = log + " UID: \"" + uid + "\" try to enter";
 		log += "\r\n";
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
@@ -320,18 +318,18 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync_Manager()
 	if (manager_server.get_Manager_Req_flag()==1)
 	{
 		//manager_server.set_Manager_Req_flag(0);
-		UINT result = AfxMessageBox(_T("Yes 또는 No 중 하나를 선택하세요."), MB_YESNO | MB_ICONQUESTION);
-
+		UINT result = AfxMessageBox(_T("클라이언트로부터 관리자권한 출입문 개방 요청이 발생했습니다.\n개방 여부를 선택해주세요."), MB_YESNO | MB_ICONQUESTION);
+		
 		if (result == IDYES) {
 			// 사용자가 Yes를 선택한 경우에 수행할 작업
-			MessageBox(_T("출입문을 열겠습니다."));
+			MessageBox(_T("요청을 승인했습니다.\n출입문을 개방합니다."));
 			manager_server.set_Manager_com_flag(1);
 			manager_server.set_Manager_Req_flag(2);
 			// 여기에 Yes를 선택했을 때 실행할 코드 추가
 		}
 		else if (result == IDNO) {
 			// 사용자가 No를 선택한 경우에 수행할 작업
-			MessageBox(_T("출입문을 닫겠습니다."));
+			MessageBox(_T("요청을 거부했습니다."));
 			manager_server.set_Manager_com_flag(0);
 			manager_server.set_Manager_Req_flag(2);
 			// 여기에 No를 선택했을 때 실행할 코드 추가
