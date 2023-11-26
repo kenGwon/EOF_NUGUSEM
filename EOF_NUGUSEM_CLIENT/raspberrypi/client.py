@@ -140,7 +140,7 @@ class ClientCommunication:
                         
                         self.send_data_type(1) # string
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        send_data = self.uid + "@" + log + " try to enter"
+                        send_data = self.uid + "@" + log
                         self.client_socket.sendall(send_data.encode("utf-8"))
                         print("UID + Log를 서버로 보냈습니다.")
                         #tcp_client.wait_for_ACK()
