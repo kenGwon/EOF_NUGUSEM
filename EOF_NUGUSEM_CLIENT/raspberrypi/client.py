@@ -13,8 +13,11 @@ class ClientCommunication:
         self.rfid_tag_flag = False
         self.img_rcv_flag = False
         self.arduino_rfid_flag = False
+        self.arduino_servo_flag = 0
         self.authentication_flag = False
         self.authentication_log = ""
+        self.angle=0
+        self.Manager_flag=False
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -100,6 +103,10 @@ class ClientCommunication:
         finally:
             pass
 
+        
+    def receive_manager_command(self):
+        # receive_data_type()
+        self.Manager_flag=True
 
     def communicate(self):
         try:
@@ -180,3 +187,46 @@ class ClientCommunication:
         else:
             print("오류: 예상치 않은 ACK 유형입니다.")
     """
+
+    def send_communicate_manager(self):
+        try:
+            self.connect_to_server()
+            self.send_data_type(0) # REQUEST
+            print("매니저 리퀘스트 메세지를 서버로 보냈습니다.")
+
+        except Exception as e:
+            print(f"통신 오류: {e}")
+        finally:
+            print("여기까지 들어왔다")
+            self.close_connection()
+
+
+    def receive_communicate_manager(self):
+        try:
+            self.connect_to_server()
+            print("위")
+            ack_type_header = self.client_socket.recv(4)
+            print("아래")
+
+            # 수신된 데이터가 비어 있는지 확인
+            if not ack_type_header:
+                print("오류: 데이터를 수신하지 못했습니다.")
+                self.Manager_flag = False
+                return
+            else:
+                ack_type = struct.unpack("I", ack_type_header)[0]
+                if ack_type == 1:
+                    print("MFC로부터 Open ACK를 받음")
+                    self.arduino_servo_flag = 1
+                elif ack_type == 2:
+                    print("MFC로부터 Close ACK를 받음")
+                    self.arduino_servo_flag = 2
+                else:
+                    print("오류: 예상치 않은 ACK 유형입니다.")
+                self.Manager_flag = True
+
+        except Exception as e:
+            print(f"통신 오류: {e}")
+        finally:
+            print("여기까지 들어왔다")
+            self.close_connection()

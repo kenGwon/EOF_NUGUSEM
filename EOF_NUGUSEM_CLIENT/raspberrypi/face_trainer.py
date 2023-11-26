@@ -101,3 +101,10 @@ class FaceTrainer():
        
         with open(join(getcwd(), "model/label_name.json"), 'w', encoding='utf-8') as outfile:
             json.dump(label_name_dic, outfile, indent="\t")        
+
+
+if __name__ == "__main__":
+    myFaceTrainer = FaceTrainer()
+    myFaceTrainer.collect_data("Ganghyeon")
+    myFaceTrainer.train_model()
+    
