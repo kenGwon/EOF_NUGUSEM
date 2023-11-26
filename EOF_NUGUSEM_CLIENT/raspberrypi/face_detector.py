@@ -24,7 +24,7 @@ class FaceDetector():
         for (x, y, width, height) in face_area_info:
             roi_gray = gray[y:y+height, x:x+width]
             id_, conf = self.model.predict(roi_gray)
-            #print(id_, conf)
+            print(id_, conf) # 실시간 얼굴 모델 일치율 출력
             try:
                 if conf < 500:
                     confidence = int(100*(1-(conf)/300))
