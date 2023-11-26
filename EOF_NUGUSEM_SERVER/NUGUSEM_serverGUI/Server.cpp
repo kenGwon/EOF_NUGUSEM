@@ -337,7 +337,6 @@ void Server::send_comm_manager(SOCKET clientSocket) {
 
     if (Manager_com_flag==1)//server 클래스에 만들어서 메시지 박스 버튼에 setflag를 넣던지
     {
-        std::cout << "Manager_com_flag1111111111" << std::endl;
         ManagerDataType managerDataType = OPEN;//1
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door OPEN" << std::endl;
@@ -345,9 +344,7 @@ void Server::send_comm_manager(SOCKET clientSocket) {
     }
     else if(Manager_com_flag == 0)
     {
-        std::cout << "Manager_com_flag000000000" << std::endl;
         ManagerDataType managerDataType = CLOSE;//2
-        std::cout << "Manager_com_flag0000111111" << std::endl;
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door CLOSE" << std::endl;
         Manager_com_flag = -1;
