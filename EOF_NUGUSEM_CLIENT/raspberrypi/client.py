@@ -1,6 +1,5 @@
 import socket
 import struct
-import serial
 import time
 from datetime import datetime
 
@@ -8,16 +7,15 @@ class ClientCommunication:
     def __init__(self, server_ip, port):
         self.server_ip = server_ip
         self.port = port
-        self.uid = ""
         self.client_socket = None
-        self.rfid_tag_flag = False
-        self.img_rcv_flag = False
         self.arduino_rfid_flag = False
-        self.arduino_servo_flag = 0
-        self.authentication_flag = False
+        self.rcvUidFromRFID_flag = False # False: 아두이노로부터 읽어들인 RFID가 없는 상태 / True: 아두이노로부터 읽어들인 RFID가 있는 상태
+        self.rcvImgFromServer_flag = False # False: 서버로부터 DB이미지를 수신하지 못한 상태 / True: 서버로부터 DB이미지를 수신한 상태 
+        self.authentication_flag = False # Fasle: 인증성공 여부를 서버에 전송하지 않는 상태 / True: 인증 성공여부를 서버에 전송해야 하는 상태
         self.authentication_log = ""
-        self.angle=0
-        self.Manager_flag=False
+        self.uid = ""
+        self.manager_flag = False # False: 관리실 문열기 요청이 없는 상태 / True: 관리실 문열기 요청이 발생한 상태
+        self.manager_responce_status = 0 # 0: IDLE상태 / 1: 관리실권한 문열기 허용 / 2: 관리실권한 문열기 거절
 
     def connect_to_server(self):
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -103,15 +101,10 @@ class ClientCommunication:
         finally:
             pass
 
-        
-    def receive_manager_command(self):
-        # receive_data_type()
-        self.Manager_flag=True
 
     def communicate(self):
         try:
-            while True:
-                               
+            while True:                
                 # 인증 완료후 로그 재전송 로직
                 if self.authentication_flag:
                     try:
@@ -127,32 +120,23 @@ class ClientCommunication:
                         self.authentication_flag = False
                         
                
-                
                 # 아두이노에서 RFID가 읽힌 경우, 로그 및 이미지 전송 처리 로직
-                if self.arduino_rfid_flag:
-                    
+                if self.arduino_rfid_flag:                    
                     print("받은 UID:", self.uid)
-                    self.rfid_tag_flag = True # 플래그 처리는 여기 있어야 함                  
+                    self.rcvUidFromRFID_flag = True # 플래그 처리는 여기 있어야 함                  
 
                     try:
                         # 송신용 소켓 오픈
                         self.connect_to_server()
-                        
                         self.send_data_type(1) # string
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         send_data = self.uid + "@" + log
                         self.client_socket.sendall(send_data.encode("utf-8"))
-                        print("UID + Log를 서버로 보냈습니다.")
-                        #tcp_client.wait_for_ACK()
-                        time.sleep(0.25)  
-                                               
+                        time.sleep(0.25) # 우리 로직에서는 img가 write되는 시간을 줘야함
                         self.send_data_type(0) # image binary
                         self.send_image_to_server("resources/captured_image.png")
-                        # tcp_client.wait_for_ACK()
-                        
                         self.close_connection()
                         
-
                         # 수신용 소켓 오픈
                         self.connect_to_server()
                         self.receive_image_from_server()
@@ -161,15 +145,48 @@ class ClientCommunication:
                         print(f"통신 오류: {e}")
                     finally:
                         self.close_connection()
-                        self.img_rcv_flag = True # 플래그 처리는 여기 있어야 함
+                        self.rcvImgFromServer_flag = True # 플래그 처리는 여기 있어야 함
                         self.arduino_rfid_flag = False
-                
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt: 데이터 수신을 중지합니다.")
         finally:
             pass
-            
+    
+
+    def send_communicate_manager(self):
+        try:
+            self.connect_to_server()
+            self.send_data_type(0) # REQUEST
+        except Exception as e:
+            print(f"통신 오류: {e}")
+        finally:
+            self.close_connection()
+
+    def receive_communicate_manager(self):
+        try:
+            self.connect_to_server()
+            ack_type_header = self.client_socket.recv(4)
+
+            # 수신된 데이터가 비어 있는지 확인
+            if not ack_type_header:
+                print("오류: 데이터를 수신하지 못했습니다.")
+                self.manager_flag = False
+                return
+            else:
+                ack_type = struct.unpack("I", ack_type_header)[0]
+                if ack_type == 1:
+                    self.manager_responce_status = 1
+                elif ack_type == 2:
+                    self.manager_responce_status = 2
+                else:
+                    print("오류: 예상치 않은 ACK 유형입니다.")
+                self.manager_flag = True
+
+        except Exception as e:
+            print(f"통신 오류: {e}")
+        finally:
+            self.close_connection()
 
     """
     def wait_for_ACK(self):
@@ -187,46 +204,3 @@ class ClientCommunication:
         else:
             print("오류: 예상치 않은 ACK 유형입니다.")
     """
-
-    def send_communicate_manager(self):
-        try:
-            self.connect_to_server()
-            self.send_data_type(0) # REQUEST
-            print("매니저 리퀘스트 메세지를 서버로 보냈습니다.")
-
-        except Exception as e:
-            print(f"통신 오류: {e}")
-        finally:
-            print("여기까지 들어왔다")
-            self.close_connection()
-
-
-    def receive_communicate_manager(self):
-        try:
-            self.connect_to_server()
-            print("위")
-            ack_type_header = self.client_socket.recv(4)
-            print("아래")
-
-            # 수신된 데이터가 비어 있는지 확인
-            if not ack_type_header:
-                print("오류: 데이터를 수신하지 못했습니다.")
-                self.Manager_flag = False
-                return
-            else:
-                ack_type = struct.unpack("I", ack_type_header)[0]
-                if ack_type == 1:
-                    print("MFC로부터 Open ACK를 받음")
-                    self.arduino_servo_flag = 1
-                elif ack_type == 2:
-                    print("MFC로부터 Close ACK를 받음")
-                    self.arduino_servo_flag = 2
-                else:
-                    print("오류: 예상치 않은 ACK 유형입니다.")
-                self.Manager_flag = True
-
-        except Exception as e:
-            print(f"통신 오류: {e}")
-        finally:
-            print("여기까지 들어왔다")
-            self.close_connection()
