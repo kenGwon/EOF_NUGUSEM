@@ -255,7 +255,7 @@ void Server::send_comm_manager(SOCKET clientSocket) {
 
     if (Manager_com_flag==1)//server 클래스에 만들어서 메시지 박스 버튼에 setflag를 넣던지
     {
-        ManagerDataType managerDataType = OPEN;//1
+        ManagerDataType managerDataType = OPEN;//3
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door OPEN" << std::endl;
         //std::string log=receiveString(clientSocket);
@@ -263,7 +263,7 @@ void Server::send_comm_manager(SOCKET clientSocket) {
     }
     else if(Manager_com_flag == 0)
     {
-        ManagerDataType managerDataType = CLOSE;//2
+        ManagerDataType managerDataType = CLOSE;//4
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door CLOSE" << std::endl;
         //std::string log = receiveString(clientSocket);
@@ -278,5 +278,6 @@ void Server::send_comm_manager(SOCKET clientSocket) {
 void Server::sendAck(SOCKET clientSocket) {
     DataType ackType = ACK;//9를 보내주는거임.
     send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
+    //쓰려면 DataType에 ACK=9를 추가해줘야함.
 }
 */
