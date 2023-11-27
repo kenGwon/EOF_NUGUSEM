@@ -5,6 +5,7 @@ import numpy as np
 import json
 chdir(dirname(__file__)) # vscode에서 현재 path 잘못 잡는 문제해결용
 
+
 class FaceTrainer():
 
     def __init__(self):

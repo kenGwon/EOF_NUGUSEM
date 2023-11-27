@@ -79,7 +79,7 @@ class ClientCommunication:
             if data_type == 3:  # 이미지 데이터 수신 시작
                 image_size = struct.unpack("I", image_size_header)[0]
                 print("Image size:", image_size)
-                #self.client_socket.recv(4)  # 4바이트 데이터 읽어오기만 하고 사용하지 않음
+                
                 # 이미지 데이터 수신 및 저장
                 received_data = image_size_header
                 remaining_size = image_size
@@ -89,7 +89,7 @@ class ClientCommunication:
                         break
                     received_data += data
                     remaining_size -= len(data)
-                # print(received_data)#
+                
                 with open(save_path, "wb") as image_file:
                     image_file.write(received_data)
 
@@ -132,7 +132,7 @@ class ClientCommunication:
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         send_data = self.uid + "@" + log
                         self.client_socket.sendall(send_data.encode("utf-8"))
-                        time.sleep(0.25) # 우리 로직에서는 img가 write되는 시간을 줘야함
+                        time.sleep(0.35) # 우리 로직에서는 img가 write되는 시간을 줘야함
                         self.send_data_type(0) # image binary
                         self.send_image_to_server("resources/captured_image.png")
                         self.close_connection()
@@ -157,7 +157,12 @@ class ClientCommunication:
     def send_communicate_manager(self):
         try:
             self.connect_to_server()
-            self.send_data_type(0) # REQUEST
+            self.send_data_type(2) # REQUEST
+            
+            # time.sleep(0.25) # 우리 로직에서는 img가 write되는 시간을 줘야함
+            self.send_data_type(0) # image binary
+            self.send_image_to_server("resources/captured_image.png")
+
         except Exception as e:
             print(f"통신 오류: {e}")
         finally:
@@ -175,9 +180,9 @@ class ClientCommunication:
                 return
             else:
                 ack_type = struct.unpack("I", ack_type_header)[0]
-                if ack_type == 1:
+                if ack_type == 3: # server mamagerDataType enum
                     self.manager_responce_status = 1
-                elif ack_type == 2:
+                elif ack_type == 4: # server mamagerDataType enum
                     self.manager_responce_status = 2
                 else:
                     print("오류: 예상치 않은 ACK 유형입니다.")
