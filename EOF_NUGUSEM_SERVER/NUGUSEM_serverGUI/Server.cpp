@@ -6,8 +6,10 @@
 
 Server::Server() {
     Rflag = -1;//no input
-
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    Manager_com_flag = -1;
+    Manager_Req_flag = 0;
+    image_upload_flag = false;
+    WSAStartup(MAKEWORD(2, 2), &wsaData);//Windows 소켓 프로그래밍에서 Winsock 라이브러리를 초기화
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -21,14 +23,14 @@ Server::Server() {
 }
 Server::Server(const int _port) {
 
-    WSAStartup(MAKEWORD(2, 2), &wsaData);
+    WSAStartup(MAKEWORD(2, 2), &wsaData);//Windows 소켓 프로그래밍에서 Winsock 라이브러리를 초기화
 
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(_port);
-
+    image_upload_flag = false;
     bind(serverSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr));
     listen(serverSocket, 5);
     std::cout << "Server listening on port " << _port << "..." << std::endl;
@@ -57,15 +59,11 @@ void Server::run(CString& received_string) {
     {
         receiveImage(clientSocket);
         set_Rflag(0);
-
-
-        
     }
     else if (dataType == STRING)// 1 
     {
         received_string = receiveString(clientSocket);
         set_Rflag(1);
-
     }
     else if (dataType == AUTH_LOG)// 4
     {
@@ -78,7 +76,6 @@ void Server::run(CString& received_string) {
         closesocket(clientSocket);
         return;
     }
-
     closesocket(clientSocket);
 }
 
@@ -104,7 +101,13 @@ int Server::get_Manager_com_flag() {
     return this->Manager_com_flag;
 }
 
+void Server::set_image_upload_flag(BOOL image_upload_flag/*receieve flag*/) {
+    this->image_upload_flag = image_upload_flag;
+}
 
+BOOL Server::get_image_upload_flag() {
+    return this->image_upload_flag;
+}
 
 // 이미지 데이터를 수신했는지 확인하는 함수
 bool Server::isLastPacket(const char* buffer, int bytesRead) {
@@ -157,7 +160,6 @@ CString Server::receiveString(SOCKET clientSocket) {
     }
 
     CStringA receivedString(stringBuffer);
-    //set_Rflag(1);//1:string for log
     return receivedString;
 }
 
@@ -204,87 +206,7 @@ void Server::sendImageToClient(CString image_Path) {
     imageFile.close();
     std::cout << "Image sent to client" << std::endl;
     closesocket(clientSocket); // 이미지를 전송한 후에 소켓을 닫습니다.
-    std::cout << "client Socket Off" << std::endl;
 }
-
-void Server::sendImageToClientAsync(CString image_Path) {
-    // 이미지를 전송하는 스레드 생성
-    std::thread([this, image_Path]() {
-        // imagePathA는 이 스레드에서만 사용될 것이므로 복사본을 사용
-        sockaddr_in clientAddr;
-        int clientAddrLen = sizeof(clientAddr);
-        SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-       
-        if (clientSocket == INVALID_SOCKET) {
-            std::cerr << "Error accepting client connection: " << WSAGetLastError() << std::endl;
-            return;
-        }
-
-        std::ifstream imageFile(image_Path, std::ios::binary);
-
-        if (!imageFile.is_open()) {
-            std::cerr << "Error opening image file: " << image_Path << std::endl;
-            closesocket(clientSocket);
-            return;
-        }
-
-        char buffer[BUFFER_SIZE];
-        int bytesRead;
-
-        try {
-            while ((bytesRead = imageFile.read(buffer, BUFFER_SIZE).gcount()) > 0) {
-                int bytesSent = send(clientSocket, buffer, bytesRead, 0);
-
-                if (bytesSent == SOCKET_ERROR) {
-                    std::cerr << "Error sending image data: " << WSAGetLastError() << std::endl;
-                    break;
-                }
-
-                std::cout << "Sent " << bytesSent << " bytes of image data to client" << std::endl;
-            }
-
-            // 클라이언트에게 이미지 전송이 완료되었음을 알리는 메시지 전송
-            DataType endTransmission = STRING;
-            send(clientSocket, reinterpret_cast<char*>(&endTransmission), sizeof(DataType), 0);
-        }
-        catch (const std::exception& e) {
-            std::cerr << "Error reading image file: " << e.what() << std::endl;
-        }
-
-        imageFile.close();
-        std::cout << "Image sent to client" << std::endl;
-
-        // 이미지 전송이 완료된 후에 소켓을 닫습니다.
-        closesocket(clientSocket);
-        std::cout << "client Socket Off" << std::endl;
-
-        // 이미지 전송이 완료된 후에 추가 작업을 수행할 수 있습니다.
-        handleImageTransmissionCompleteMessage();
-        }).detach();
-}
-
-void Server::handleImageTransmissionCompleteMessage() {
-    std::cout << "Image transmission complete message received from client" << std::endl;
-    // 이미지 전송 완료 후의 추가 작업을 여기에 추가합니다.
-
-
-}
-
-void Server::sendAck(SOCKET clientSocket) {
-    DataType ackType = ACK;//9를 보내주는거임.
-    send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
-}
-
-
-
-
-
-
-
-
-
-
-
 
 
 void Server::run_manager() {
@@ -295,27 +217,23 @@ void Server::run_manager() {
         sockaddr_in clientAddr;
         int clientAddrLen = sizeof(clientAddr);
         clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
-        char buffer[sizeof(ManagerDataType)];
-        int bytesReceived = recv(clientSocket, buffer, sizeof(ManagerDataType), 0);
 
-        if (bytesReceived == sizeof(ManagerDataType)) {
-            ManagerDataType receivedType = *reinterpret_cast<ManagerDataType*>(buffer);
+        ManagerDataType managerDataType;
+        int headerBytesRead = recv(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
 
-            if (receivedType == REQUEST) {
-                Manager_Req_flag = 1;
-                // flag 세팅으로 메시지 박스 pop up
-                std::cout << "Manager REQUEST" << std::endl;
 
-            }
+        if (headerBytesRead != sizeof(ManagerDataType)) {
+            std::cerr << "Error reading data type header" << std::endl;
+            closesocket(clientSocket);
         }
-        else if (bytesReceived == 0) {
-            // 클라이언트가 연결을 종료한 경우
-            std::cout << "Client disconnected." << std::endl;
+        if (managerDataType == M_IMAGE_REC) //0
+        {
+            std::cout << "Manager REQUEST" << std::endl;
+            receiveImage(clientSocket);
+            image_upload_flag = true;
+            Manager_Req_flag = 1; // flag 세팅으로 메시지 박스 pop up
         }
-        else {
-            // 오류 또는 예상치 못한 상황 처리
-            std::cerr << "Error receiving data from manager: " << WSAGetLastError() << std::endl;
-        }
+      
     }
     else if (Manager_Req_flag == 2) {
         std::cout << "Manager_Req_flag == 2" << std::endl;
@@ -331,7 +249,7 @@ void Server::run_manager() {
 }
 
 void Server::send_comm_manager(SOCKET clientSocket) {
-
+    
     // flag 제어가 들어오면 msg 박스에서 Y->setflag=1 N->setflag=0
     std::cout << "send_comm_manager" << std::endl;
 
@@ -340,6 +258,7 @@ void Server::send_comm_manager(SOCKET clientSocket) {
         ManagerDataType managerDataType = OPEN;//1
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door OPEN" << std::endl;
+        //std::string log=receiveString(clientSocket);
         Manager_com_flag = -1;
     }
     else if(Manager_com_flag == 0)
@@ -347,6 +266,17 @@ void Server::send_comm_manager(SOCKET clientSocket) {
         ManagerDataType managerDataType = CLOSE;//2
         send(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
         std::cout << "Door CLOSE" << std::endl;
+        //std::string log = receiveString(clientSocket);
         Manager_com_flag = -1;
     }
+
 }
+
+
+
+/*
+void Server::sendAck(SOCKET clientSocket) {
+    DataType ackType = ACK;//9를 보내주는거임.
+    send(clientSocket, reinterpret_cast<char*>(&ackType), sizeof(DataType), 0);
+}
+*/

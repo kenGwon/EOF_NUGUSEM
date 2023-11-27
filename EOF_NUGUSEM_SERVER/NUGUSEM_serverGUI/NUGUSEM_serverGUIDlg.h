@@ -5,6 +5,7 @@
 
 #include "Server.h"
 #include "mariaDB.h"
+#include <ctime>
 
 #define MESSAGE_LISTEN_CLIENT WM_USER + 1 // 사용자 정의 메세지
 
@@ -21,7 +22,7 @@ public:
 #endif
 
 protected:
-	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 지원입니다.
+	virtual   void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 지원입니다.
 
 
 	// 구현입니다.
@@ -36,38 +37,34 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 private:
-	BOOL m_flagListenClientThread;
+	BOOL m_flagListenClientThread;//MFC Dlg init이 끝났을 때, 통신 쓰레드 시작용
+	
+	CRect m_cam_face_rect;//픽처컨트롤
+	CImage m_cam_face_image;//픽처컨트롤
 
-	CRect m_cam_face_rect;
-	CImage m_cam_face_image;
+	CEdit m_controlLog;//에디트컨트롤
+	CString m_strLog;//에디트컨트롤
 
-	CEdit m_controlLog;
-	CString m_strLog;
-	CWinThread* m_pThread;
+	CWinThread* m_nThread;//일반 통신용 쓰레드
 	CWinThread* m_mThread;/*manager thread*/
-	// 비동기 소켓 통신을 위한 변수 및 함수 추가
-	std::mutex m_socketMutex;
-	std::condition_variable m_condition;
-	bool m_socketDataAvailable;
+
 	CString m_img_path;
 
-
-
-
-
 public:
-	afx_msg void OnBnClickedOpen();
-	afx_msg void OnBnClickedClose();
-	BOOL get_m_flagListenClientThread();
-	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
-	void set_img_path(CString img_path);
-	CString get_img_path();
-	Server server = Server();
-	Server manager_server = Server(8889);
+	afx_msg void OnBnClickedAbout();
+
+	Server server = Server();//일반 상황 통신용 포트: 8888
+	Server manager_server = Server(MPORT);//매니저 호출 상황용 포트:8889
+
 	mariaDB DB;
 
-
 	// 비동기 소켓 통신을 위한 함수
-	void ListenClientAsync();
-	void ListenClientAsync_Manager();
+	void ListenClientAsync();//일반 상황 통신용 쓰레드 함수
+	void ListenClientAsync_Manager();//관리자 호출 상황 통신용 쓰레드 함수
+	void PrintImage(CString img_path, CImage& image_instance, CRect& image_rect);
+
+	BOOL get_m_flagListenClientThread();//MFC Dlg init이 끝났을 때, 통신 쓰레드 시작용 플래그 접근용
+
+	CString get_img_path();
+	void set_img_path(CString img_path);
 };
