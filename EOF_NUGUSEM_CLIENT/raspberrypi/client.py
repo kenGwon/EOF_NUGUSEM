@@ -132,9 +132,9 @@ class ClientCommunication:
                         log = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         send_data = self.uid + "@" + log
                         self.client_socket.sendall(send_data.encode("utf-8"))
-                        time.sleep(0.35) # 우리 로직에서는 img가 write되는 시간을 줘야함
+                        time.sleep(0.6) # 우리 로직에서는 img가 write되는 시간을 줘야함
                         self.send_data_type(0) # image binary
-                        self.send_image_to_server("resources/captured_image.png")
+                        self.send_image_to_server("resources/captured_image.jpg")
                         self.close_connection()
                         
                         # 수신용 소켓 오픈
@@ -161,7 +161,7 @@ class ClientCommunication:
             
             # time.sleep(0.25) # 우리 로직에서는 img가 write되는 시간을 줘야함
             self.send_data_type(0) # image binary
-            self.send_image_to_server("resources/captured_image.png")
+            self.send_image_to_server("resources/captured_image.jpg")
 
         except Exception as e:
             print(f"통신 오류: {e}")

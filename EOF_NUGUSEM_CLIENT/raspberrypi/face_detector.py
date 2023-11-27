@@ -20,7 +20,26 @@ class FaceDetector():
         gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         face_area_info = self.face_classifier.detectMultiScale(gray, scaleFactor=1.5, minNeighbors=5)
 
+        if len(face_area_info):
+            largest_ROI_idx = 0
+            max_width, max_height = 0, 0
+            
+            for i, (x, y, width, height) in enumerate(face_area_info):
+                if width > max_width and height > max_height:
+                    largest_ROI_idx = i
+            
+            largest_ROI_x = face_area_info[largest_ROI_idx][0]
+            largest_ROI_y = face_area_info[largest_ROI_idx][1]
+            largest_ROI_width = face_area_info[largest_ROI_idx][2]
+            largest_ROI_height = face_area_info[largest_ROI_idx][3]
 
+            return img[largest_ROI_y:largest_ROI_y+largest_ROI_height,\
+                       largest_ROI_x:largest_ROI_x+largest_ROI_width]
+
+        else:
+            return None
+
+        """
         for (x, y, width, height) in face_area_info:
             roi_gray = gray[y:y+height, x:x+width]
             id_, conf = self.model.predict(roi_gray)
@@ -44,8 +63,4 @@ class FaceDetector():
             finally:
                 pass
         return img
-
-
-
-
-
+        """
