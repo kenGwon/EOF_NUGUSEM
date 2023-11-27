@@ -9,7 +9,7 @@ chdir(dirname(__file__)) # vscode에서 현재 path 잘못 잡는 문제해결�
 class FaceTrainer():
 
     def __init__(self):
-        self.face_classifier = cv2.CascadeClassifier("model/haarcascade_frontalface_default.xml")
+        self.face_classifier = cv2.CascadeClassifier("model/haarcascade_frontalface_alt2.xml")
         self.model = cv2.face.LBPHFaceRecognizer_create()
         self.model.read(join(getcwd(), "model/face_recognizer_model.yml"))
         self.cap = cv2.VideoCapture(0)
@@ -57,7 +57,7 @@ class FaceTrainer():
                 cv2.putText(face_gray, str(count), (50,50), cv2.FONT_HERSHEY_COMPLEX, 1, (0,255,0), 2)
                 cv2.imshow("얼굴 수집", face_gray)
 
-            if cv2.waitKey(1) == 27 or count == 100: # 27: ESC
+            if cv2.waitKey(1) == 27 or count == 1000: # 27: ESC
                 break
 
         cap.release()
@@ -106,6 +106,6 @@ class FaceTrainer():
 
 if __name__ == "__main__":
     myFaceTrainer = FaceTrainer()
-    myFaceTrainer.collect_data("Ganghyeon")
+    # myFaceTrainer.collect_data("Dohyeon")
     myFaceTrainer.train_model()
     
