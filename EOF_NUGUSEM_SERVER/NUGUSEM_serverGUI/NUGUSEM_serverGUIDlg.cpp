@@ -21,15 +21,10 @@
 UINT ThreadForListening(LPVOID param)
 {
 	CNUGUSEMserverGUIDlg* pMain = (CNUGUSEMserverGUIDlg*)param;
-
 	while (pMain->get_m_flagListenClientThread())
 	{
 		Sleep(1000);
-		// 비동기 소켓 통신 함수 호출
 		pMain->ListenClientAsync();
-		
-		//메인 쓰레드 에서 소켓 통신 함수 호출
-		//PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 	return 0;
 }
@@ -41,11 +36,7 @@ UINT ListeningForManager(LPVOID param)
 	while (pMain->get_m_flagListenClientThread())
 	{
 		Sleep(1000);
-		// 비동기 소켓 통신 함수 호출		
 		pMain->ListenClientAsync_Manager();
-
-		//메인 쓰레드 에서 소켓 통신 함수 호출
-		//PostMessage(pMain->m_hWnd, MESSAGE_LISTEN_CLIENT, NULL, NULL);
 	}
 	return 0;
 }
@@ -108,13 +99,8 @@ BEGIN_MESSAGE_MAP(CNUGUSEMserverGUIDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
-	ON_BN_CLICKED(IDC_OPEN, &CNUGUSEMserverGUIDlg::OnBnClickedOpen)
-	ON_BN_CLICKED(IDC_CLOSE, &CNUGUSEMserverGUIDlg::OnBnClickedClose)
+	ON_BN_CLICKED(IDC_ABOUT, &CNUGUSEMserverGUIDlg::OnBnClickedAbout)
 END_MESSAGE_MAP()
-
-
-
-
 
 
 
@@ -152,10 +138,8 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	// TODO: 여기에 추가 초기화 작업을 추가합니다.
 
 	m_flagListenClientThread = TRUE;
-	m_socketDataAvailable = false;
-	m_pThread = AfxBeginThread(ThreadForListening, this);
-	m_mThread/*manager thread*/ = AfxBeginThread(ListeningForManager, this);//
-
+	m_nThread = AfxBeginThread(ThreadForListening, this);
+	m_mThread = AfxBeginThread(ListeningForManager, this);
 
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
@@ -223,29 +207,9 @@ HCURSOR CNUGUSEMserverGUIDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-void CNUGUSEMserverGUIDlg::OnBnClickedOpen()
-{
-	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
-
-
-}
-
-
-void CNUGUSEMserverGUIDlg::OnBnClickedClose()
-{
-	// 여기서 통신 클래스 객체를 통한 send 동작이 들어가야함.
-
-
-
-}
-
-
 // 비동기 소켓 통신 함수 정의
 void CNUGUSEMserverGUIDlg::ListenClientAsync()
 {
-	//	std::unique_lock<std::mutex> lock(m_socketMutex);
-
 	CString str;
 	server.run(str);
 
@@ -256,10 +220,8 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
 		std::cout << "Image received" << std::endl;
 
-		m_socketDataAvailable = true;
-		m_condition.notify_one();
 
-		server.sendImageToClient(/*"received_image.png"*/get_img_path());
+		server.sendImageToClient(get_img_path());
 
 		server.set_Rflag(-1);
 	}
@@ -286,8 +248,6 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(log.c_str());
 
-		m_socketDataAvailable = true;
-		m_condition.notify_one();
 	}
 	else if (server.get_Rflag() == 4)//AUTH_LOG 수신
 	{
@@ -299,62 +259,92 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(log);
 
-		m_socketDataAvailable = true;
-		m_condition.notify_one();
 	}
-
-
 }
-
-
-
 
 // 비동기 소켓 통신 함수 정의
 void CNUGUSEMserverGUIDlg::ListenClientAsync_Manager()
 {
-	//	std::unique_lock<std::mutex> lock(m_socketMutex);
 	manager_server.run_manager();
-
+	if (manager_server.get_image_upload_flag())
+	{
+		std::cout << "manager_server.get_image_upload_flag() !!!!!!!!!" << std::endl;
+		GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+		ScreenToClient(m_cam_face_rect);
+		PrintImage(_T("received_image.png"), m_cam_face_image, m_cam_face_rect);
+		std::cout << "Image received" << std::endl;
+		manager_server.set_image_upload_flag(false);
+	}
 	if (manager_server.get_Manager_Req_flag()==1)
 	{
-		//manager_server.set_Manager_Req_flag(0);
+		std::time_t currentTime;
+		std::time(&currentTime);
+		std::tm localTime;
+		localtime_s(&localTime, &currentTime);
+		// yyyy mm dd hh mm ss 형태의 문자열 생성
+		char buffer[20];
+		std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &localTime);
+		// 결과를 string 변수에 담기
+		std::string currentDateTime = buffer;
+
+
+		std::string log;
+		log = currentDateTime+ " 클라이언트로부터 관리자권한 출입문 개방 요청 발생\r\n";
+		int nLength = m_controlLog.GetWindowTextLength();
+		m_controlLog.SetSel(nLength, nLength);
+		m_controlLog.ReplaceSel(log.c_str());
+
 		UINT result = AfxMessageBox(_T("클라이언트로부터 관리자권한 출입문 개방 요청이 발생했습니다.\n개방 여부를 선택해주세요."), MB_YESNO | MB_ICONQUESTION);
-		
+
+
 		if (result == IDYES) {
-			// 사용자가 Yes를 선택한 경우에 수행할 작업
+			std::time(&currentTime);
+			localtime_s(&localTime, &currentTime);
+			std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &localTime);
+			std::string currentDateTime = buffer;
+
+			log = currentDateTime + " 클라이언트의 출입문 개방 요청 승인\r\n";
+			int nLength = m_controlLog.GetWindowTextLength();
+			m_controlLog.SetSel(nLength, nLength);
+			m_controlLog.ReplaceSel(log.c_str());
 			MessageBox(_T("요청을 승인했습니다.\n출입문을 개방합니다."));
+
 			manager_server.set_Manager_com_flag(1);
 			manager_server.set_Manager_Req_flag(2);
-			// 여기에 Yes를 선택했을 때 실행할 코드 추가
 		}
 		else if (result == IDNO) {
-			// 사용자가 No를 선택한 경우에 수행할 작업
+			std::time(&currentTime);
+			localtime_s(&localTime, &currentTime);
+			std::strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", &localTime);
+			std::string currentDateTime = buffer;
+
+			log = currentDateTime + " 클라이언트의 출입문 개방 요청 거부\r\n";
+			int nLength = m_controlLog.GetWindowTextLength();
+			m_controlLog.SetSel(nLength, nLength);
+			m_controlLog.ReplaceSel(log.c_str());
 			MessageBox(_T("요청을 거부했습니다."));
+
 			manager_server.set_Manager_com_flag(0);
 			manager_server.set_Manager_Req_flag(2);
-			// 여기에 No를 선택했을 때 실행할 코드 추가
 		}
 	}
 }
 
-
-
-
+void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage& image_instance, CRect& image_rect)
+{
+	image_instance.~CImage();
+	image_instance.Load(img_path);
+	InvalidateRect(image_rect, TRUE);
+}
 
 BOOL CNUGUSEMserverGUIDlg::get_m_flagListenClientThread()
 {
 	return this->m_flagListenClientThread;
 }
 
-/*
-  desc: img_path를 바탕으로 이미지를 로드하여 Picture Control에 출력한다.
-  param: 이미지 경로
-*/
-void CNUGUSEMserverGUIDlg::PrintImage(CString img_path, CImage & image_instance, CRect & image_rect)
+CString CNUGUSEMserverGUIDlg::get_img_path()
 {
-	image_instance.~CImage();
-	image_instance.Load(img_path);
-	InvalidateRect(image_rect, TRUE);
+	return this->m_img_path;
 }
 
 void CNUGUSEMserverGUIDlg::set_img_path(CString img_path)
@@ -362,7 +352,8 @@ void CNUGUSEMserverGUIDlg::set_img_path(CString img_path)
 	this->m_img_path = img_path;
 }
 
-CString CNUGUSEMserverGUIDlg::get_img_path()
+void CNUGUSEMserverGUIDlg::OnBnClickedAbout()
 {
-	return this->m_img_path;
+	CAboutDlg aboutDlg;
+	aboutDlg.DoModal();
 }
