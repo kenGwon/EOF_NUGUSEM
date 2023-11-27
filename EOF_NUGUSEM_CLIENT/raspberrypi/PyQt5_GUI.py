@@ -41,13 +41,12 @@ class WebcamThread(QThread):
 
             # 관리실 문열기 요청 버튼을 누른 순간 이미지가 한번 저장되어야 함
             if manager_request_flag:
-                image_filename = "resources/captured_image.png"
+                image_filename = "resources/captured_image.jpg"
                 cv2.imwrite(image_filename, frame) # client.py 127번재 라인이 참조하는 실제파일 저장 타이밍
                 manager_request_flag = False
 
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_image = faceDetector.verify_face(rgb_image)
 
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
@@ -55,6 +54,14 @@ class WebcamThread(QThread):
                 frameQimage = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(frameQimage)
                 
+                face_gray_image = faceDetector.verify_face(rgb_image)
+                if face_gray_image is None:
+                    pass
+                else:
+                    image_filename = "resources/face_on_captured_image.jpg"
+                    cv2.imwrite(image_filename, face_gray_image)
+
+                """
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 face_area_info = faceDetector.face_classifier.detectMultiScale(gray_image, scaleFactor=1.5, minNeighbors=5)
                 
@@ -67,11 +74,10 @@ class WebcamThread(QThread):
                     face_gray_image = gray_image[y:y+height, x:x+width]
                     image_filename = "resources/face_on_captured_image.jpg"
                     cv2.imwrite(image_filename, face_gray_image)                     
-
+                """
                 if socketForRFID.rcvUidFromRFID_flag:
-                    image_filename = "resources/captured_image.png"
+                    image_filename = "resources/captured_image.jpg"
                     cv2.imwrite(image_filename, frame) # client.py 127번재 라인이 참조하는 실제파일 저장 타이밍
-                    time.sleep(0.25)
 
                     if socketForRFID.rcvImgFromServer_flag:                    
                         captured_image_path = "resources/face_on_captured_image.jpg"
