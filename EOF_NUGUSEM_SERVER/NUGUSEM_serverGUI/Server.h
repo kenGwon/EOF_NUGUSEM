@@ -8,7 +8,6 @@
 #include <winsock2.h>
 #include <ws2ipdef.h>
 #include <atlstr.h>
-#include <mutex> // 추가된 헤더
 
 enum DataType {
     IMAGE_REC = 0,
@@ -16,7 +15,6 @@ enum DataType {
     IMAGE_SEND = 2,
     IMAGE_SIZE = 3,
     AUTH_LOG = 4,
-    ACK = 9,
 };
 
 enum ManagerDataType {
@@ -25,7 +23,6 @@ enum ManagerDataType {
     REQUEST = 2,
     OPEN = 3,
     CLOSE = 4,
-    
 };
 
 constexpr int PORT = 8888;
