@@ -45,10 +45,12 @@ Server::~Server() {
 void Server::run(CString& received_string) {
     sockaddr_in clientAddr;
     int clientAddrLen = sizeof(clientAddr);
-    SOCKET clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+    SOCKET clientSocket = accept(serverSocket, 
+        (struct sockaddr*)&clientAddr, &clientAddrLen);
 
     DataType dataType;
-    int headerBytesRead = recv(clientSocket, reinterpret_cast<char*>(&dataType), sizeof(DataType), 0);
+    int headerBytesRead = recv(clientSocket, 
+        reinterpret_cast<char*>(&dataType), sizeof(DataType), 0);
 
     if (headerBytesRead != sizeof(DataType)) {
         std::cerr << "Error reading data type header" << std::endl;
@@ -177,8 +179,7 @@ void Server::sendImageToClient(CString image_Path) {
         return;
     }
 
-    // 이미지 파일의 크기를 가져옴
-    std::ifstream imageFileSize(image_Path, std::ios::binary | std::ios::ate);
+    std::ifstream imageFileSize(image_Path, std::ios::binary | std::ios::ate);// 이미지 파일의 크기를 가져옴
     int imageSize = static_cast<int>(imageFileSize.tellg());
     imageFileSize.close();
 
@@ -216,10 +217,12 @@ void Server::run_manager() {
     {
         sockaddr_in clientAddr;
         int clientAddrLen = sizeof(clientAddr);
-        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        clientSocket = accept(serverSocket, (struct sockaddr*)
+            &clientAddr, &clientAddrLen);
 
         ManagerDataType managerDataType;
-        int headerBytesRead = recv(clientSocket, reinterpret_cast<char*>(&managerDataType), sizeof(ManagerDataType), 0);
+        int headerBytesRead = recv(clientSocket, reinterpret_cast<char*>
+            (&managerDataType), sizeof(ManagerDataType), 0);
 
 
         if (headerBytesRead != sizeof(ManagerDataType)) {
@@ -233,13 +236,13 @@ void Server::run_manager() {
             image_upload_flag = true;
             Manager_Req_flag = 1; // flag 세팅으로 메시지 박스 pop up
         }
-      
     }
     else if (Manager_Req_flag == 2) {
         std::cout << "Manager_Req_flag == 2" << std::endl;
         sockaddr_in clientAddr;
         int clientAddrLen = sizeof(clientAddr);
-        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+        clientSocket = accept(serverSocket, (struct sockaddr*)
+            &clientAddr, &clientAddrLen);
         if (clientSocket != NULL)
         {
             send_comm_manager(clientSocket);

@@ -258,7 +258,6 @@ void CNUGUSEMserverGUIDlg::ListenClientAsync()
 		int nLength = m_controlLog.GetWindowTextLength();
 		m_controlLog.SetSel(nLength, nLength);
 		m_controlLog.ReplaceSel(log);
-
 	}
 }
 
