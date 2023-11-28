@@ -150,7 +150,7 @@ class WebcamThread(QThread):
         self.manager_call_flag = True
 
 
-class CommThread(QThread):
+class RfidCommThread(QThread):
     global socketForRFID
 
     def __init__(self):
@@ -166,17 +166,17 @@ class ManagerCommThread(QThread):
     
     def __init__(self):
         super().__init__()
-        self.request_flag = 0 # 0: IDLE 상태 / 1: 관리자 요청이 발생하여 서버에 요청한 상태 / 2: 서버의 응답을 기다리는 상태
+        self.request_status = 0 # 0: IDLE 상태 / 1: 관리자 요청이 발생하여 서버에 요청한 상태 / 2: 서버의 응답을 기다리는 상태
         self.information = ""
 
     def run(self):
         while True:
-            if self.request_flag == 1:
+            if self.request_status == 1:
                 time.sleep(0.5)
                 socketForManager.send_communicate_manager()
-                self.request_flag = 2
+                self.request_status = 2
 
-            elif self.request_flag == 2:
+            elif self.request_status == 2:
                 socketForManager.receive_communicate_manager()
                 if socketForManager.manager_flag == True:
                     if socketForManager.manager_responce_status == 1:
@@ -203,13 +203,13 @@ class ManagerCommThread(QThread):
                     else :
                         pass
 
-                    self.request_flag = 0 # 플래그 초기화
+                    self.request_status = 0 # 플래그 초기화
                     socketForManager.manager_flag = False # 플래그 초기화
             else:
                 pass
                 
     def request(self):
-        self.request_flag = 1
+        self.request_status = 1
 
 
 class ArduinoThread(QThread):
@@ -306,7 +306,7 @@ class App(QMainWindow):
         self.thread_manager_comm.start()
 
         # TCP IP 통신 스레드 생성
-        self.thread_comm = CommThread()
+        self.thread_comm = RfidCommThread()
         self.thread_comm.start()
 
         # 아두이노 시리얼 통신 스레드 생성
