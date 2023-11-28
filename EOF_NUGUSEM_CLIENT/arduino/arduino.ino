@@ -8,14 +8,10 @@
 #define BUZZER_PIN 7
 #define BUTTON_PIN 6
 
-#define BUTTON_RELEASE HIGH
-#define BUTTON_RELEASE HIGH
-
 
 MFRC522 mfrc522(SDA_PIN, RST_PIN);
 Servo myservo;
 
-int buttonState = HIGH;
 int lastButtonState = HIGH;
 unsigned long lastDebounceTime = 0;
 unsigned long debounceDelay = 50;
@@ -28,7 +24,7 @@ void setup() {
   mfrc522.PCD_Init();
   myservo.attach(SERVO_PIN);
   myservo.write(0);
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);//풀업저항 사용/ 평소:HIGH,버튼눌림:LOW
   pinMode(BUZZER_PIN, OUTPUT);
 }
 
@@ -65,7 +61,7 @@ void handleRFID() {
 }
 
 void handleButton() {
-  if (sensingBTN()) {
+  if (sensingBTN()==LOW) {
     sendBTNReqtoRaspberryPi();
   }
 }
@@ -87,31 +83,18 @@ void sendBTNReqtoRaspberryPi() {
 }
 
 bool sensingBTN() {
-  //디바운싱은 나중에
-  int reading = digitalRead(BUTTON_PIN);
+  // 디바운싱 적용
+  int curr_state = digitalRead(BUTTON_PIN);
 
-  if (reading == LOW) {
-    //lastDebounceTime = millis();
-    Serial.println("asdfasdf");
-    return true;
+  if (curr_state == LOW && lastButtonState==HIGH) {
+    lastDebounceTime = millis();//현재 시간을 밀리초로 표현
+    lastButtonState=LOW;
+    return HIGH;
   }
-  return false;
-
-  /*
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
+  else if (curr_state == HIGH && lastButtonState==LOW) 
+  { // 마지막으로 디바운싱이 적용된 후의 시간 경과가 설정된 debounceDelay보다 크다면
+    lastButtonState=HIGH;
+    return LOW;
   }
-
-  if ((millis() - lastDebounceTime) > debounceDelay) { // 제대로된 버튼입력
-    if (reading != buttonState) {
-      buttonState = reading;
-      lastButtonState = reading;
-      return true;
-    }
-  }
-  else
-  {
-    return false;
-  }
-*/
+  return HIGH;
 }
