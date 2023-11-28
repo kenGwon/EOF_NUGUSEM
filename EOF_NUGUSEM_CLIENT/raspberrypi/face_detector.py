@@ -16,13 +16,14 @@ class FaceDetector():
             self.label_name = json.load(json_file)
 
     # desc:
-    def verify_face(self, img):
-        gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-        face_area_info = self.face_classifier.detectMultiScale(gray, scaleFactor=1.5, minNeighbors=5)
+    def get_faceROI(self, img):
+        img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
+        face_area_info = self.face_classifier.detectMultiScale(img_gray, scaleFactor=1.5, minNeighbors=5)
 
         if len(face_area_info):
             largest_ROI_idx = 0
-            max_width, max_height = 0, 0
+            max_width = 0
+            max_height = 0
             
             for i, (x, y, width, height) in enumerate(face_area_info):
                 if width > max_width and height > max_height:
@@ -33,7 +34,7 @@ class FaceDetector():
             largest_ROI_width = face_area_info[largest_ROI_idx][2]
             largest_ROI_height = face_area_info[largest_ROI_idx][3]
 
-            return img[largest_ROI_y:largest_ROI_y+largest_ROI_height,\
+            return img_gray[largest_ROI_y:largest_ROI_y+largest_ROI_height,\
                        largest_ROI_x:largest_ROI_x+largest_ROI_width]
 
         else:

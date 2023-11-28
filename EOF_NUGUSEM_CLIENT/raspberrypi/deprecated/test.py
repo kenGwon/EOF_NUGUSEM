@@ -24,7 +24,7 @@ class WebcamThread(QThread):
             ret, frame = cap.read()
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                rgb_image = myFACEDETECTOR.verify_face(rgb_image) #########
+                rgb_image = myFACEDETECTOR.get_faceROI(rgb_image) #########
                 # 박스가 적용된 이미지
 
 

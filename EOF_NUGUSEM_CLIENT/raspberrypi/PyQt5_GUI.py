@@ -52,7 +52,7 @@ class WebcamThread(QThread):
                 frameQimage = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(frameQimage)
                 
-                face_gray_image = self.faceDetector.verify_face(rgb_image)
+                face_gray_image = self.faceDetector.get_faceROI(rgb_image)
                 if face_gray_image is None:
                     pass
                 else:
@@ -81,21 +81,21 @@ class WebcamThread(QThread):
                         captured_image_path = "resources/face_on_captured_image.jpg"
                         received_image_path = "resources/received_image.jpg"
 
-                        received_image_mat = cv2.cvtColor(cv2.imread(received_image_path), cv2.COLOR_BGR2GRAY)
-                        captured_image_gray = cv2.cvtColor(cv2.imread(captured_image_path), cv2.COLOR_BGR2GRAY)
+                        captured_image_mat = cv2.cvtColor(cv2.imread(captured_image_path), cv2.COLOR_RGB2GRAY)
+                        received_image_mat = cv2.cvtColor(cv2.imread(received_image_path), cv2.COLOR_RGB2GRAY)
                     
+                        ci_id_, ci_conf = self.faceDetector.model.predict(captured_image_mat)
                         ri_id_, ri_conf = self.faceDetector.model.predict(received_image_mat)
-                        ci_id_, ci_conf = self.faceDetector.model.predict(captured_image_gray)
                         
                         ##################### 다양한 플로우 다루기 위한 조건 추가 될 부분 #####################
-                        print(f"ri_id_: {ri_id_}")
                         print(f"ci_id_: {ci_id_}")
+                        print(f"ri_id_: {ri_id_}")
                         ri_id_confidence = int(100*(1-(ri_conf)/300))
                         ci_id_confidence = int(100*(1-(ci_conf)/300))
 
                         if ci_id_ == ri_id_ and \
-                            ri_id_confidence > 75 and \
-                                  ci_id_confidence > 75:
+                            ci_id_confidence > 75 and \
+                                  ri_id_confidence > 75:
                             self.information = "인증완료. 입장 가능합니다."
                             self.update_information.emit(self.information)
                             print("동일인") 
