@@ -15,8 +15,6 @@ import face_detector
 serialForArduino = serial.Serial('/dev/ttyACM0', 9600)
 socketForRFID = client.ClientCommunication("10.10.15.58", 8888)
 socketForManager = client.ClientCommunication("10.10.15.58", 8889) # 포트 다름. 8889임.
-faceDetector = face_detector.FaceDetector()
-manager_request_flag = False
 
 
 class WebcamThread(QThread):
@@ -26,24 +24,24 @@ class WebcamThread(QThread):
 
     def __init__(self): 
         super().__init__()
+        self.manager_call_flag = False
         self.running = False # False: 웹캠 정지 상태 / True: 웹캠 동작 상태
         self.information = ""
+        self.faceDetector = face_detector.FaceDetector()
         with open(join(getcwd(), "model/label_name.json"), 'r') as json_file:
             self.label_name = json.load(json_file)
 
-    def run(self):
-        global manager_request_flag
-
+    def run(self):   
         cap = cv2.VideoCapture(0)
 
         while self.running:
             ret, frame = cap.read()
 
             # 관리실 문열기 요청 버튼을 누른 순간 이미지가 한번 저장되어야 함
-            if manager_request_flag:
+            if self.manager_call_flag:
                 image_filename = "resources/captured_image.jpg"
                 cv2.imwrite(image_filename, frame) # client.py 127번재 라인이 참조하는 실제파일 저장 타이밍
-                manager_request_flag = False
+                self.manager_call_flag = False
 
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -54,7 +52,7 @@ class WebcamThread(QThread):
                 frameQimage = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(frameQimage)
                 
-                face_gray_image = faceDetector.verify_face(rgb_image)
+                face_gray_image = self.faceDetector.verify_face(rgb_image)
                 if face_gray_image is None:
                     pass
                 else:
@@ -86,8 +84,8 @@ class WebcamThread(QThread):
                         received_image_mat = cv2.cvtColor(cv2.imread(received_image_path), cv2.COLOR_BGR2GRAY)
                         captured_image_gray = cv2.cvtColor(cv2.imread(captured_image_path), cv2.COLOR_BGR2GRAY)
                     
-                        ri_id_, ri_conf = faceDetector.model.predict(received_image_mat)
-                        ci_id_, ci_conf = faceDetector.model.predict(captured_image_gray)
+                        ri_id_, ri_conf = self.faceDetector.model.predict(received_image_mat)
+                        ci_id_, ci_conf = self.faceDetector.model.predict(captured_image_gray)
                         
                         ##################### 다양한 플로우 다루기 위한 조건 추가 될 부분 #####################
                         print(f"ri_id_: {ri_id_}")
@@ -147,6 +145,9 @@ class WebcamThread(QThread):
 
     def pause(self):
         self.running = False
+    
+    def manager_call(self):
+        self.manager_call_flag = True
 
 
 class CommThread(QThread):
@@ -208,14 +209,12 @@ class ManagerCommThread(QThread):
                 pass
                 
     def request(self):
-        global manager_request_flag
         self.request_flag = 1
-        manager_request_flag = True # 여기 순간에서 이미지가 한번 저장 되어야 함
-        print("관리자 리퀘스트 플래그 바뀜!")
 
 
 class ArduinoThread(QThread):
     global socketForRFID
+    manager_call_trigger = pyqtSignal(bool)
     
     def __init__(self):
         super().__init__()
@@ -230,6 +229,12 @@ class ArduinoThread(QThread):
                 socketForRFID.uid = uid_
                 socketForRFID.arduino_rfid_flag = True
 
+            # 관리자 호출버튼을 트리거로 발동하는 서버통신
+            if data and data.startswith("T"):
+                print("버튼 눌렸다")
+                self.manager_call_trigger.emit(True) # True: 트리거가 발생했다 / False: IDLE상태
+
+            """
             # PyQt5 GUI의 관리실 요청 버튼을 트리거로 발동하는 서버통신에 관여하는 if-else문
             if socketForManager.manager_responce_status == 1:
                 # 서보모터 문 열기
@@ -243,6 +248,7 @@ class ArduinoThread(QThread):
                 socketForManager.manager_responce_status = 0
             else :
                 pass
+            """
 
 
 class App(QMainWindow):
@@ -305,6 +311,7 @@ class App(QMainWindow):
 
         # 아두이노 시리얼 통신 스레드 생성
         self.arduino_thread = ArduinoThread()
+        self.arduino_thread.manager_call_trigger.connect(self.manager_request_arduino)
         self.arduino_thread.start()
         
         # 각종 정보 출력 라인 에디트 생성
@@ -334,12 +341,20 @@ class App(QMainWindow):
     def pause(self):
         self.thread_webCam.pause()
 
-    # 관리실 인증 요청 버튼 시그널 대응 슬롯
+    # 관리실 인증 요청 PyQt GUI버튼 시그널 대응 슬롯
     def manager_request(self):
+        self.thread_webCam.manager_call()
         self.thread_manager_comm.request()
         self.lineEdit_info.setStyleSheet("background-color : orange")
         self.lineEdit_info.setText("관리자 승인 대기중...")
         self.timer.stop()
+
+    # 관리실 인증 요청 아두이노 물리버튼 시그널 대응 슬롯
+    @pyqtSlot(bool)
+    def manager_request_arduino(self, status):
+        if status == True:
+            self.manager_request()
+            status = False
 
     # 각종 정보 출력 에디트라인 시그널 대응 슬롯
     @pyqtSlot(str)
