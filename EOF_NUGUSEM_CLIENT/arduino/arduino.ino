@@ -37,14 +37,15 @@ void loop() {
 void handleSerialCommands() {
   if (Serial.available() > 0) {
     char command = Serial.read();
-    if (command == 'A') {
+    if (command == 'A') 
+    {
       int angle = Serial.parseInt();
       myservo.write(angle);
-      if (angle == 180) {
-        delay(4000);
-        myservo.write(0);
-      }
-    } else if (command == 'Z') {
+      delay(4000);
+      myservo.write(0);
+    } 
+    else if (command == 'Z') 
+    {
       tone(BUZZER_PIN, 1000);
       delay(1000);
       noTone(BUZZER_PIN);
