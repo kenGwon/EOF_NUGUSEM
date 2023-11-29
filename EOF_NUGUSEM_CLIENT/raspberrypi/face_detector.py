@@ -39,29 +39,3 @@ class FaceDetector():
 
         else:
             return None
-
-        """
-        for (x, y, width, height) in face_area_info:
-            roi_gray = gray[y:y+height, x:x+width]
-            id_, conf = self.model.predict(roi_gray)
-            print(id_, conf) # 실시간 얼굴 모델 일치율 출력
-            try:
-                if conf < 500:
-                    confidence = int(100*(1-(conf)/300))
-                    display_string = str(confidence)+'% Confidence it is user'
-                cv2.putText(img,display_string,(100,120), cv2.FONT_HERSHEY_COMPLEX,1,(250,120,255),2)
-
-
-                if confidence > 75:
-                    name = self.label_name[str(id_)] #ID를 이용하여 이름 가져오기
-                    cv2.putText(img, name, (250, 450), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 255, 0), 2)
-                else:
-                    cv2.putText(img, "OutSider!", (250, 450), cv2.FONT_HERSHEY_COMPLEX, 1, (0, 0, 255), 2)
-            except:
-                cv2.putText(img, "Face Not Found", (400,500), cv2.FONT_HERSHEY_COMPLEX, 1, (255,0,0),2)
-                print("Face Not Found!")
-                pass
-            finally:
-                pass
-        return img
-        """

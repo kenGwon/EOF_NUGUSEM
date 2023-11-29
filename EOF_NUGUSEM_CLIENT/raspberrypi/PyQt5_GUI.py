@@ -46,33 +46,23 @@ class WebcamThread(QThread):
             if ret:
                 rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+                face_gray_image = self.faceDetector.get_faceROI(rgb_image)
+                if face_gray_image is None:
+                    display_string = "Please look at the camera"
+                    cv2.putText(rgb_image,display_string,(100,80), cv2.FONT_HERSHEY_DUPLEX, 1, (250,120,255),1)
+                    display_string = "for correct face recognition"
+                    cv2.putText(rgb_image,display_string,(100,110), cv2.FONT_HERSHEY_DUPLEX, 1, (250,120,255),1)
+                    pass
+                else:
+                    image_filename = "resources/face_on_captured_image.jpg"
+                    cv2.imwrite(image_filename, face_gray_image)
+                
                 h, w, ch = rgb_image.shape
                 bytes_per_line = ch * w
                 convert_to_qt_format = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format_RGB888)
                 frameQimage = convert_to_qt_format.scaled(640, 480, Qt.KeepAspectRatio)
                 self.change_pixmap_signal.emit(frameQimage)
-                
-                face_gray_image = self.faceDetector.get_faceROI(rgb_image)
-                if face_gray_image is None:
-                    pass
-                else:
-                    image_filename = "resources/face_on_captured_image.jpg"
-                    cv2.imwrite(image_filename, face_gray_image)
 
-                """
-                gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                face_area_info = faceDetector.face_classifier.detectMultiScale(gray_image, scaleFactor=1.5, minNeighbors=5)
-                
-                if len(face_area_info):
-                    x = face_area_info[0][0]
-                    y = face_area_info[0][1]
-                    width = face_area_info[0][2]
-                    height = face_area_info[0][3]
-                
-                    face_gray_image = gray_image[y:y+height, x:x+width]
-                    image_filename = "resources/face_on_captured_image.jpg"
-                    cv2.imwrite(image_filename, face_gray_image)                     
-                """
                 if socketForRFID.rcvUidFromRFID_flag:
                     image_filename = "resources/captured_image.jpg"
                     cv2.imwrite(image_filename, frame) # client.py 127번재 라인이 참조하는 실제파일 저장 타이밍
@@ -87,7 +77,6 @@ class WebcamThread(QThread):
                         ci_id_, ci_conf = self.faceDetector.model.predict(captured_image_mat)
                         ri_id_, ri_conf = self.faceDetector.model.predict(received_image_mat)
                         
-                        ##################### 다양한 플로우 다루기 위한 조건 추가 될 부분 #####################
                         print(f"ci_id_: {ci_id_}")
                         print(f"ri_id_: {ri_id_}")
                         ri_id_confidence = int(100*(1-(ri_conf)/300))
@@ -107,7 +96,7 @@ class WebcamThread(QThread):
                             name = self.label_name[str(ci_id_)] #ID를 이용하여 json에서 이름 가져오기
                             socketForRFID.authentication_log = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " " + name + " Enter Complete!!!"
                             socketForRFID.authentication_flag = True
-                            socketForRFID.manager_flag=True
+                            socketForRFID.manager_flag = True
                         else:
                             self.information = "인증실패! 입장 불가능합니다!"
                             self.update_information.emit(self.information)
@@ -123,8 +112,6 @@ class WebcamThread(QThread):
 
                             socketForRFID.authentication_log = datetime.now().strftime("%Y-%m-%d %H:%M:%S") + " Reject trial..."
                             socketForRFID.authentication_flag = True
-
-                        #################################################################################
                 
                         socketForRFID.rcvImgFromServer_flag = False
                         socketForRFID.rcvUidFromRFID_flag = False
@@ -150,7 +137,7 @@ class WebcamThread(QThread):
         self.manager_call_flag = True
 
 
-class CommThread(QThread):
+class RfidCommThread(QThread):
     global socketForRFID
 
     def __init__(self):
@@ -166,17 +153,17 @@ class ManagerCommThread(QThread):
     
     def __init__(self):
         super().__init__()
-        self.request_flag = 0 # 0: IDLE 상태 / 1: 관리자 요청이 발생하여 서버에 요청한 상태 / 2: 서버의 응답을 기다리는 상태
+        self.request_status = 0 # 0: IDLE 상태 / 1: 관리자 요청이 발생하여 서버에 요청한 상태 / 2: 서버의 응답을 기다리는 상태
         self.information = ""
 
     def run(self):
         while True:
-            if self.request_flag == 1:
+            if self.request_status == 1:
                 time.sleep(0.5)
                 socketForManager.send_communicate_manager()
-                self.request_flag = 2
+                self.request_status = 2
 
-            elif self.request_flag == 2:
+            elif self.request_status == 2:
                 socketForManager.receive_communicate_manager()
                 if socketForManager.manager_flag == True:
                     if socketForManager.manager_responce_status == 1:
@@ -203,13 +190,13 @@ class ManagerCommThread(QThread):
                     else :
                         pass
 
-                    self.request_flag = 0 # 플래그 초기화
+                    self.request_status = 0 # 플래그 초기화
                     socketForManager.manager_flag = False # 플래그 초기화
             else:
                 pass
                 
     def request(self):
-        self.request_flag = 1
+        self.request_status = 1
 
 
 class ArduinoThread(QThread):
@@ -233,22 +220,6 @@ class ArduinoThread(QThread):
             if data and data.startswith("T"):
                 print("버튼 눌렸다")
                 self.manager_call_trigger.emit(True) # True: 트리거가 발생했다 / False: IDLE상태
-
-            """
-            # PyQt5 GUI의 관리실 요청 버튼을 트리거로 발동하는 서버통신에 관여하는 if-else문
-            if socketForManager.manager_responce_status == 1:
-                # 서보모터 문 열기
-                command = "A180\n" # ex: A180\n
-                serialForArduino.write(command.encode())
-                socketForManager.manager_responce_status = 0 # 
-            elif socketForManager.manager_responce_status == 2:
-                # 서보모터 문 닫기
-                command = "A0\n" # ex: A180\n
-                serialForArduino.write(command.encode())
-                socketForManager.manager_responce_status = 0
-            else :
-                pass
-            """
 
 
 class App(QMainWindow):
@@ -306,7 +277,7 @@ class App(QMainWindow):
         self.thread_manager_comm.start()
 
         # TCP IP 통신 스레드 생성
-        self.thread_comm = CommThread()
+        self.thread_comm = RfidCommThread()
         self.thread_comm.start()
 
         # 아두이노 시리얼 통신 스레드 생성
