@@ -141,6 +141,9 @@ BOOL CNUGUSEMserverGUIDlg::OnInitDialog()
 	m_nThread = AfxBeginThread(ThreadForListening, this);
 	m_mThread = AfxBeginThread(ListeningForManager, this);
 
+	GetDlgItem(IDC_CAM_FACE)->GetWindowRect(m_cam_face_rect);
+	ScreenToClient(m_cam_face_rect);
+	PrintImage(_T("idle_frame.png"), m_cam_face_image, m_cam_face_rect);
 
 	return TRUE;  // 포커스를 컨트롤에 설정하지 않으면 TRUE를 반환합니다.
 }
