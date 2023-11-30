@@ -27,6 +27,8 @@ class FaceDetector():
             
             for i, (x, y, width, height) in enumerate(face_area_info):
                 if width > max_width and height > max_height:
+                    max_width = width
+                    max_height = height
                     largest_ROI_idx = i
             
             largest_ROI_x = face_area_info[largest_ROI_idx][0]
