@@ -1,6 +1,7 @@
 import cv2
 from os import getcwd, chdir
 from os.path import join, dirname
+from PIL import Image
 import numpy as np
 import json
 chdir(dirname(__file__)) # vscode에서 현재 path 잘못 잡는 문제해결용
@@ -36,8 +37,17 @@ class FaceDetector():
             largest_ROI_width = face_area_info[largest_ROI_idx][2]
             largest_ROI_height = face_area_info[largest_ROI_idx][3]
 
-            return img_gray[largest_ROI_y:largest_ROI_y+largest_ROI_height,\
-                       largest_ROI_x:largest_ROI_x+largest_ROI_width]
+            faceROI = img_gray[largest_ROI_y:largest_ROI_y+largest_ROI_height,\
+                               largest_ROI_x:largest_ROI_x+largest_ROI_width]
+
+            if largest_ROI_width > 300 and largest_ROI_height > 300:
+                faceROI = cv2.resize(faceROI, (200, 200), interpolation=cv2.INTER_AREA)
+            elif largest_ROI_width < 180 and largest_ROI_height < 180:
+                faceROI = cv2.resize(faceROI, (200, 200), interpolation=cv2.INTER_LINEAR)
+            else:
+                pass
+
+            return faceROI
 
         else:
             return None
