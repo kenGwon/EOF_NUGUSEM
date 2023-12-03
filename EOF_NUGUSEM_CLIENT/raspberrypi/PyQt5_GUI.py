@@ -312,11 +312,12 @@ class App(QMainWindow):
 
     # 관리실 인증 요청 PyQt GUI버튼 시그널 대응 슬롯
     def manager_request(self):
-        self.thread_webCam.manager_call()
-        self.thread_manager_comm.request()
-        self.lineEdit_info.setStyleSheet("background-color : orange")
-        self.lineEdit_info.setText("관리자 승인 대기중...")
-        self.timer.stop()
+        if self.thread_webCam.running == True:
+            self.thread_webCam.manager_call()
+            self.thread_manager_comm.request()
+            self.lineEdit_info.setStyleSheet("background-color : orange")
+            self.lineEdit_info.setText("관리자 승인 대기중...")
+            self.timer.stop()
 
     # 관리실 인증 요청 아두이노 물리버튼 시그널 대응 슬롯
     @pyqtSlot(bool)
