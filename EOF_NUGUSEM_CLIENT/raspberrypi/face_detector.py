@@ -1,8 +1,6 @@
 import cv2
 from os import getcwd, chdir
 from os.path import join, dirname
-from PIL import Image
-import numpy as np
 import json
 chdir(dirname(__file__)) # vscode에서 현재 path 잘못 잡는 문제해결용
 

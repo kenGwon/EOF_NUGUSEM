@@ -1,6 +1,9 @@
 # 서드파티 라이브러리는 깃 업로드 제외 @권강현
 EOF_NUGUSEM_SERVER/NUGUSEM_serverGUI/thirdparty/*
-
+# 클라이언트 프로그램 리눅스 실행파일 빌드 폴더 제외 @권강현
+EOF_NUGUSEM_CLIENT/raspberrypi/main.spec
+EOF_NUGUSEM_CLIENT/raspberrypi/build/*
+EOF_NUGUSEM_CLIENT/raspberrypi/dist/*
 
 # Created by https://www.toptal.com/developers/gitignore/api/visualstudio
 # Edit at https://www.toptal.com/developers/gitignore?templates=visualstudio
