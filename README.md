@@ -12,14 +12,11 @@ NUGU:SEM - "누구셈?" 얼굴인식 출입보안 서비스
 
 
 ## 프로젝트 시연 영상
-<!--
-
 (아래 이미지를 클릭하시면 유튜브로 이동합니다.)<br>
-[![프로젝트 시연영상](http://img.youtube.com/vi/5zXsg7xOozg/0.jpg)](https://youtu.be/5zXsg7xOozg)<br>
+[![프로젝트 시연영상](http://img.youtube.com/vi/hgrCi_iDWEE/0.jpg)](https://youtu.be/hgrCi_iDWEE)<br>
 <br>
 <br>
 
--->
 
 ## 프로젝트 발표 자료
 (아래 이미지를 클릭하시면 구글 슬라이드로 이동합니다.)<br>
